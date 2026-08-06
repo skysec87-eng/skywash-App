@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<title>skyWash Cleaning — On-Demand Laundry Pickup</title>
+<meta name="description" content="Book on-demand laundry pickup and delivery wherever you are with skyWash Cleaning.">
+<meta name="theme-color" content="#08283a">
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icons/favicon-32.png" sizes="32x32">
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="skyWash">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<link rel="stylesheet" href="/css/styles.css?v=4">
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">
+      <span class="mark" aria-hidden="true"></span>
+      <h1>sky<span>Wash</span></h1>
+      <span class="tag">On-demand cleaning</span>
+    </div>
+    <div class="tabs">
+      <button id="tabBook" class="nav-btn active" data-tab="book">Book pickup</button>
+      <button id="tabBrowse" class="nav-btn" data-tab="browse">Browse map</button>
+      <button id="tabHistory" class="nav-btn" data-tab="history">My orders</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar">
+
+      <div class="panel" id="panelBooking">
+
+        <div id="stepForm">
+          <h2>What are we washing today?</h2>
+          <p class="sub">Get matched with the nearest laundry partner, like ordering a ride.</p>
+
+          <div class="schedule-toggle">
+            <button id="scheduleNowBtn" class="active">Pickup now</button>
+            <button id="scheduleLaterBtn">Schedule for later</button>
+          </div>
+          <div class="schedule-time-row" id="scheduleTimeRow">
+            <label class="field-label" for="scheduleDateTime">Pickup date &amp; time</label>
+            <input type="datetime-local" id="scheduleDateTime" class="schedule-input" step="900">
+            <p class="schedule-hint">Opens your phone’s calendar — pick any day and time in the next 30 days.</p>
+          </div>
+
+          <label class="field-label">Pickup location</label>
+          <div class="addr-input-row">
+            <input type="text" id="addrInput" placeholder="Enter your pickup address" autocomplete="off">
+            <button class="geo-btn" id="geoBtn" title="Use current location">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+            </button>
+          </div>
+          <div class="loc-confirmed" id="locConfirmed">✓ Location set — matching nearby partners</div>
+
+          <label class="field-label">Service type <span style="font-weight:500;text-transform:none;letter-spacing:0;color:var(--ink-soft)">(tap to select more than one)</span></label>
+          <div class="service-grid" id="serviceGrid">
+            <button class="service-card selected" data-service="wash" data-rate="500" data-unit="kg">
+              <span class="icon">🧺</span><span class="name">Wash &amp; Fold</span><span class="price">₦500/kg</span>
+            </button>
+            <button class="service-card" data-service="dry" data-rate="1500" data-unit="item">
+              <span class="icon">🧥</span><span class="name">Dry Cleaning</span><span class="price">₦1,500/item</span>
+            </button>
+            <button class="service-card" data-service="iron" data-rate="300" data-unit="kg">
+              <span class="icon">👔</span><span class="name">Iron Only</span><span class="price">₦300/kg</span>
+            </button>
+            <button class="service-card" data-service="express" data-rate="900" data-unit="kg">
+              <span class="icon">⚡</span><span class="name">Express (4h)</span><span class="price">₦900/kg</span>
+            </button>
+          </div>
+
+          <label class="field-label" id="weightLabel">Estimated weight</label>
+          <div class="weight-row">
+            <div>
+              <div class="val" id="weightVal">3 kg</div>
+              <div class="sub">Roughly 1 laundry bag</div>
+            </div>
+            <div class="stepper">
+              <button id="wMinus">–</button>
+              <button id="wPlus">+</button>
+            </div>
+          </div>
+
+          <label class="field-label">Payment method</label>
+          <div class="payment-grid" id="paymentGrid">
+            <div class="pay-option selected" data-pay="card">
+              <span class="pay-icon">💳</span>
+              <div><div class="pay-name">Debit / Credit Card</div><div class="pay-sub">Visa, Mastercard, Verve</div></div>
+              <span class="radio"></span>
+            </div>
+            <div class="pay-option" data-pay="transfer">
+              <span class="pay-icon">🏦</span>
+              <div><div class="pay-name">Bank Transfer</div><div class="pay-sub">Instant confirmation</div></div>
+              <span class="radio"></span>
+            </div>
+            <div class="pay-option" data-pay="cash">
+              <span class="pay-icon">💵</span>
+              <div><div class="pay-name">Cash on Pickup</div><div class="pay-sub">Pay the courier directly</div></div>
+              <span class="radio"></span>
+            </div>
+          </div>
+
+          <div class="promo-row">
+            <input type="text" id="promoInput" placeholder="Promo code">
+            <button id="promoBtn">Apply</button>
+          </div>
+          <div class="promo-applied" id="promoApplied">✓ SKY10 applied — 10% off</div>
+
+          <div class="estimate-box">
+            <div class="row"><span>Base pickup fee</span><span id="estBase">₦500</span></div>
+            <div class="row"><span id="estServiceLabel">Wash &amp; Fold · 3kg</span><span id="estService">₦1,500</span></div>
+            <div class="row"><span>Service fee (10%)</span><span id="estFee">₦200</span></div>
+            <div class="row" id="promoRow" style="display:none;"><span>Promo discount</span><span id="estPromo">-₦0</span></div>
+            <div class="row total"><span>Total estimate</span><span id="estTotal">₦2,200</span></div>
+          </div>
+
+          <button class="primary-btn" id="requestBtn" disabled>Set a pickup location first</button>
+        </div>
+
+        <div id="stepMatching" class="hidden">
+          <div class="matching-wrap">
+            <div class="radar">
+              <div class="ring"></div><div class="ring"></div><div class="ring"></div>
+              <div class="core">🧺</div>
+            </div>
+            <h3>Looking nearby…</h3>
+            <p id="matchingSub">Loading partners you can choose from</p>
+          </div>
+        </div>
+
+        <div id="stepMatched" class="hidden">
+          <h2>Choose a partner</h2>
+          <p class="sub">Nearby laundries — pick who you want, then confirm.</p>
+          <div class="offer-list" id="offerList"></div>
+          <div class="estimate-box">
+            <div class="row"><span>Estimated pickup time</span><span id="matchEta">—</span></div>
+            <div class="row total"><span>Total to pay</span><span id="matchTotal">—</span></div>
+          </div>
+          <button class="primary-btn" id="confirmBtn" disabled>Select a partner first</button>
+          <button class="ghost-btn" id="cancelMatchBtn">Cancel</button>
+        </div>
+
+        <div id="stepTrip" class="hidden">
+          <div class="eta-banner">
+            <div><div class="lbl">Status</div><div class="big" id="tripStatusBig">Confirmed</div></div>
+            <div style="text-align:right"><div class="lbl">ETA</div><div class="big" id="tripEta">—</div></div>
+          </div>
+          <div class="provider-card" style="margin-bottom:6px;">
+            <div class="provider-avatar" id="tripAvatar">—</div>
+            <div class="provider-info">
+              <h4 id="tripName">—</h4>
+              <div class="meta"><span class="stars" id="tripStars">—</span></div>
+            </div>
+            <div class="call-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.362 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            </div>
+          </div>
+          <div class="stepper-track" id="stepperTrack"></div>
+
+          <button class="chat-toggle-btn" id="chatToggleBtn">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+            Message provider
+          </button>
+          <div class="chat-panel" id="chatPanel">
+            <div class="chat-log" id="chatLog"></div>
+            <div class="chat-quick" id="chatQuick">
+              <button data-msg="Please ring the bell when you arrive">Ring the bell</button>
+              <button data-msg="I'll leave the bag with the security guard">Leaving with security</button>
+              <button data-msg="How much longer will you be?">How much longer?</button>
+              <button data-msg="Please handle with care, some delicates in there">Handle with care</button>
+            </div>
+          </div>
+
+          <button class="ghost-btn" id="cancelTripBtn">Cancel order</button>
+        </div>
+
+        <div id="stepRating" class="hidden">
+          <div class="rating-wrap">
+            <div class="check">✓</div>
+            <h3>Delivered!</h3>
+            <p id="ratingSub">Your laundry is fresh and folded. How was <span id="ratingProviderName">your provider</span>?</p>
+            <div class="stars-input" id="starsInput">
+              <button data-star="1">★</button><button data-star="2">★</button><button data-star="3">★</button>
+              <button data-star="4">★</button><button data-star="5">★</button>
+            </div>
+            <button class="primary-btn" id="doneBtn">Book another pickup</button>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="panel hidden" id="panelBrowse">
+        <h2>All laundry partners</h2>
+        <p class="sub">Browse every provider on the map.</p>
+        <div class="search-box">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="text" id="browseSearch" placeholder="Search by name, area, or city…">
+        </div>
+        <div id="browseList"></div>
+      </div>
+
+      <div class="panel hidden" id="panelHistory">
+        <h2>My orders</h2>
+        <p class="sub">Your past pickups with skyWash Cleaning.</p>
+        <div id="historyList"></div>
+      </div>
+
+    </aside>
+
+    <div class="map-wrap">
+      <div class="live-badge" id="liveBadge"><span class="dot"></span><span id="liveText">Live</span></div>
+      <div id="map"></div>
+    </div>
+
+    <button class="map-close-btn" id="mapCloseBtn" aria-label="Close map">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
+    <button class="map-fab" id="mapFab" aria-label="View map"><span class="fab-dot"></span>
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4-7 4z"/><path d="M8 2v16M16 6v16"/></svg>
+    </button>
+  </div>
+
+  <nav class="bottom-nav">
+    <button class="nav-btn active" data-tab="book">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l2-4h14l2 4M3 7h18M3 7v13a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V7"/><circle cx="12" cy="14" r="3"/></svg>
+      Book
+    </button>
+    <button class="nav-btn" data-tab="browse">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4-7 4z"/><path d="M8 2v16M16 6v16"/></svg>
+      Map
+    </button>
+    <button class="nav-btn" data-tab="history">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/></svg>
+      Orders
+    </button>
+  </nav>
+</div>
+
+<script src="/js/register-sw.js?v=4"></script>
+<script src="/js/app.js?v=4"></script>
+</body>
+</html>
