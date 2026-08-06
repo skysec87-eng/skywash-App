@@ -3,18 +3,31 @@
 A mobile-first, installable web app prototype for on-demand laundry pickup and delivery in any city, modeled on request → choose partner → track → rate flow.
 
 ## Docs
-- [`DOCUMENTATION.md`](DOCUMENTATION.md) — complete product & platform documentation (Uber-style: vision, flows, pricing, architecture, roadmap)
-- `README.md` — deploy quickstart
+- [`DOCUMENTATION.md`](DOCUMENTATION.md) — complete product & platform documentation
+- [`API.md`](API.md) — extracted backend API contract
+- [`backend/README.md`](backend/README.md) — Spring Boot API run/deploy guide
 
 ## What's included
-- `index.html` — app shell (booking flow, live map, order tracking, chat, order history)
-- `css/styles.css` — styles
-- `js/` — app logic (`app.js`, `register-sw.js`)
-- `manifest.json` + `sw.js` — installable PWA with basic offline caching
-- `icons/` — app icons for home-screen install
-- `vercel.json` — static hosting config
+- **Frontend (Vercel):** `index.html`, `css/`, `js/`, PWA files
+- **Backend (Spring Boot):** `backend/` — Java 21 API on port `8080`
+- `manifest.json` + `sw.js` — installable PWA
+- `icons/` — app icons
+- `vercel.json` — static hosting config (frontend only)
 
-## Deploy to Vercel
+## Backend (Spring Boot)
+
+```bash
+export JAVA_HOME="/opt/homebrew/opt/openjdk@21"
+export PATH="$JAVA_HOME/bin:$PATH"
+cd backend
+mvn -DskipTests package
+java -jar target/skywash-api-0.1.0.jar
+```
+
+API: `http://localhost:8080/api/health`  
+Deploy the JAR to Railway/Render/Fly — **not** Vercel (JVM long-running process).
+
+## Deploy frontend to Vercel
 
 **Option A — Vercel dashboard (easiest)**
 1. Go to https://vercel.com/new

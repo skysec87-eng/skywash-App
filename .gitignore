@@ -1,1 +1,14 @@
 .vercel
+.env
+.env.local
+*.pem
+
+# Backend local overrides / secrets (prefer root .env)
+backend/src/main/resources/application-local.properties
+**/application-local.properties
+
+# Build / IDE
+backend/target/
+.idea/
+*.iml
+.DS_Store
