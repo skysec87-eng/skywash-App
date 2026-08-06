@@ -15,7 +15,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<link rel="stylesheet" href="/css/styles.css?v=4">
+<link rel="stylesheet" href="/css/styles.css?v=5">
 </head>
 <body>
 <div class="app">
@@ -60,18 +60,23 @@
           </div>
           <div class="loc-confirmed" id="locConfirmed">✓ Location set — matching nearby partners</div>
 
-          <label class="field-label">Service type <span style="font-weight:500;text-transform:none;letter-spacing:0;color:var(--ink-soft)">(tap to select more than one)</span></label>
-          <div class="service-grid" id="serviceGrid">
-            <button class="service-card selected" data-service="wash" data-rate="500" data-unit="kg">
+          <label class="field-label">Service type</label>
+          <p class="service-hint">Select all that apply — you can pick more than one.</p>
+          <div class="service-grid" id="serviceGrid" role="group" aria-label="Service types">
+            <button type="button" class="service-card selected" role="checkbox" aria-checked="true" data-service="wash" data-rate="500" data-unit="kg">
+              <span class="check" aria-hidden="true"></span>
               <span class="icon">🧺</span><span class="name">Wash &amp; Fold</span><span class="price">₦500/kg</span>
             </button>
-            <button class="service-card" data-service="dry" data-rate="1500" data-unit="item">
+            <button type="button" class="service-card" role="checkbox" aria-checked="false" data-service="dry" data-rate="1500" data-unit="item">
+              <span class="check" aria-hidden="true"></span>
               <span class="icon">🧥</span><span class="name">Dry Cleaning</span><span class="price">₦1,500/item</span>
             </button>
-            <button class="service-card" data-service="iron" data-rate="300" data-unit="kg">
+            <button type="button" class="service-card" role="checkbox" aria-checked="false" data-service="iron" data-rate="300" data-unit="kg">
+              <span class="check" aria-hidden="true"></span>
               <span class="icon">👔</span><span class="name">Iron Only</span><span class="price">₦300/kg</span>
             </button>
-            <button class="service-card" data-service="express" data-rate="900" data-unit="kg">
+            <button type="button" class="service-card" role="checkbox" aria-checked="false" data-service="express" data-rate="900" data-unit="kg">
+              <span class="check" aria-hidden="true"></span>
               <span class="icon">⚡</span><span class="name">Express (4h)</span><span class="price">₦900/kg</span>
             </button>
           </div>
@@ -243,7 +248,7 @@
   </nav>
 </div>
 
-<script src="/js/register-sw.js?v=4"></script>
-<script src="/js/app.js?v=4"></script>
+<script src="/js/register-sw.js?v=5"></script>
+<script src="/js/app.js?v=5"></script>
 </body>
 </html>

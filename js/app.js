@@ -297,15 +297,16 @@ function servicesCost(){
 document.getElementById('serviceGrid').addEventListener('click', (e)=>{
   const card = e.target.closest('.service-card');
   if(!card) return;
-  // Multi-select: tap to toggle. Keep at least one service selected.
+  e.preventDefault();
+  // Multi-select checkboxes: tap toggles. Keep at least one on.
+  const selectedCount = document.querySelectorAll('.service-card.selected').length;
   if(card.classList.contains('selected')){
-    if(document.querySelectorAll('.service-card.selected').length === 1){
-      // don't allow clearing the last one
-      return;
-    }
+    if(selectedCount <= 1) return;
     card.classList.remove('selected');
+    card.setAttribute('aria-checked', 'false');
   } else {
     card.classList.add('selected');
+    card.setAttribute('aria-checked', 'true');
   }
   selectedServices = getSelectedServicesFromDOM();
   syncQuantityLabel();
