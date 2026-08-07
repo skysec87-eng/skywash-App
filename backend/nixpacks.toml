@@ -1,0 +1,8 @@
+[phases.setup]
+nixPkgs = ["maven", "jdk21"]
+
+[phases.build]
+cmds = ["mvn -DskipTests package"]
+
+[start]
+cmd = "java -jar target/skywash-api-0.1.0.jar"
