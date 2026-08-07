@@ -1,4 +1,4 @@
-const CACHE_NAME = 'skywash-v24';
+const CACHE_NAME = 'skywash-v25';
 const APP_SHELL = [
   '/',
   '/index.html',

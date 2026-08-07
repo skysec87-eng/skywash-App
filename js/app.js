@@ -317,12 +317,18 @@ async function initGoogleSignIn(){
   try{
     const cfg = await api('/api/auth/google/config');
     if(cfg && cfg.client_id) googleClientId = cfg.client_id;
-    if(cfg && cfg.enabled === false){
+    // Only hide if backend is explicitly disabled AND we have no public client id fallback
+    if(cfg && cfg.enabled === false && !googleClientId){
       const wrap = document.getElementById('obGoogleWrap');
       if(wrap) wrap.hidden = true;
       return;
     }
   }catch(_){}
+  if(!googleClientId){
+    const wrap = document.getElementById('obGoogleWrap');
+    if(wrap) wrap.hidden = true;
+    return;
+  }
   try{
     await waitForGoogle();
     ensureGoogleInitialized();
@@ -1366,7 +1372,8 @@ async function boot(){
   try{
     await api('/api/health');
   }catch(e){
-    alert(`API not reachable. Start the backend (port 8080) and open http://127.0.0.1:3000 via serve.py.`);
+    const apiHint = API_BASE || '(same origin)';
+    alert(`API not reachable at ${apiHint}. For local: run the backend and python3 serve.py. For Vercel: use https://sudsnear-deploy.vercel.app and ensure Railway CORS includes that origin.`);
     return;
   }
 

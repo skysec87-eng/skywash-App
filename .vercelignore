@@ -1,0 +1,10 @@
+# Keep Vercel deploys small — frontend only
+backend/target
+backend/.mvn
+**/.git
+.env
+.env.*
+!.env.example
+**/*.jar
+**/node_modules
+.DS_Store
