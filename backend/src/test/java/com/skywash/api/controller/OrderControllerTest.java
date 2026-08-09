@@ -32,6 +32,7 @@ class OrderControllerTest {
 
   @MockBean private OrderService orderService;
   @MockBean private AuthService authService;
+  @MockBean private com.skywash.api.service.OrderMessageService orderMessageService;
 
   @Test
   void createOrder() throws Exception {
@@ -146,11 +147,23 @@ class OrderControllerTest {
   void chatRoundTrip() throws Exception {
     Order o = new Order();
     o.setId("o1");
+    o.setStatus("confirmed");
+    o.setStatusLabel("Request confirmed");
+    o.setProviderName("Dee Clean");
+    when(orderService.get("o1")).thenReturn(o);
+    when(orderMessageService.list("o1")).thenReturn(List.of());
+    when(orderMessageService.sendCustomerMessage(any(), any()))
+        .thenReturn(List.of(
+            Map.of("sender", "customer", "text", "Ring the bell"),
+            Map.of("sender", "assist", "text", "Sure — I'll collect from security.")
+        ));
+    when(orderService.getDetail("o1")).thenReturn(Map.of("id", "o1", "status", "confirmed"));
     when(orderService.get("o1")).thenReturn(o);
 
     mockMvc.perform(get("/api/orders/o1/messages"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.messages").isArray());
+        .andExpect(jsonPath("$.messages").isArray())
+        .andExpect(jsonPath("$.order.status").value("confirmed"));
 
     mockMvc.perform(post("/api/orders/o1/messages")
             .contentType(MediaType.APPLICATION_JSON)
@@ -158,6 +171,7 @@ class OrderControllerTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.messages.length()").value(2))
         .andExpect(jsonPath("$.messages[0].text").value("Ring the bell"))
-        .andExpect(jsonPath("$.messages[1].sender").value("partner"));
+        .andExpect(jsonPath("$.messages[1].sender").value("assist"))
+        .andExpect(jsonPath("$.order.id").value("o1"));
   }
 }

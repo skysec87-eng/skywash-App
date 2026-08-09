@@ -39,7 +39,19 @@ public class PricingController {
 
   @PostMapping("/geocode")
   public Map<String, Object> geocode(@RequestBody Map<String, Object> body) {
+    if (body.get("lat") != null && body.get("lng") != null) {
+      double lat = toDouble(body.get("lat"));
+      double lng = toDouble(body.get("lng"));
+      return geocodeService.reverse(lat, lng);
+    }
     String address = body.get("address") == null ? "" : String.valueOf(body.get("address"));
     return geocodeService.geocode(address);
+  }
+
+  private static double toDouble(Object value) {
+    if (value instanceof Number n) {
+      return n.doubleValue();
+    }
+    return Double.parseDouble(String.valueOf(value));
   }
 }

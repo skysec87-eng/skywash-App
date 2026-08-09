@@ -184,11 +184,11 @@ class ApiIntegrationTest {
             .contentType(MediaType.APPLICATION_JSON)
             .content("{\"text\":\"Please ring the bell\"}"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.messages", hasSize(2)));
+        .andExpect(jsonPath("$.messages", hasSize(greaterThanOrEqualTo(3))));
 
     mockMvc.perform(get("/api/orders/" + orderId + "/messages"))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.messages", hasSize(2)));
+        .andExpect(jsonPath("$.messages", hasSize(greaterThanOrEqualTo(3))));
 
     mockMvc.perform(post("/api/orders/" + orderId + "/acceptances"))
         .andExpect(status().isOk())

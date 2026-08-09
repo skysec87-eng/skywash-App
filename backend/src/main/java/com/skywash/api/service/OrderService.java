@@ -18,6 +18,7 @@ import com.skywash.api.entity.OrderEntity;
 import com.skywash.api.entity.PartnerEntity;
 import com.skywash.api.model.Order;
 import com.skywash.api.repo.OrderRepository;
+import com.skywash.api.util.GeoUtils;
 
 @Service
 public class OrderService {
@@ -25,11 +26,18 @@ public class OrderService {
   private final CatalogService catalogService;
   private final PricingService pricingService;
   private final OrderRepository orderRepository;
+  private final OrderMessageService orderMessageService;
 
-  public OrderService(CatalogService catalogService, PricingService pricingService, OrderRepository orderRepository) {
+  public OrderService(
+      CatalogService catalogService,
+      PricingService pricingService,
+      OrderRepository orderRepository,
+      OrderMessageService orderMessageService
+  ) {
     this.catalogService = catalogService;
     this.pricingService = pricingService;
     this.orderRepository = orderRepository;
+    this.orderMessageService = orderMessageService;
   }
 
   @Transactional
@@ -98,7 +106,9 @@ public class OrderService {
     order.setPaymentStatus("unpaid");
     order.getTimeline().add(new OrderEntity.TimelineEmbed("confirmed", labelFor("confirmed"), Instant.now()));
 
-    return toModel(orderRepository.save(order));
+    OrderEntity saved = orderRepository.save(order);
+    orderMessageService.seedTripStart(saved);
+    return toModel(saved);
   }
 
   @Transactional(readOnly = true)
@@ -261,29 +271,121 @@ public class OrderService {
     for (OrderEntity o : orderRepository.findByStatusNotIn(terminal)) {
       if (o.getScheduledAt() != null && o.getScheduledAt().isAfter(now)) continue;
 
+      // Smooth courier motion every tick while moving
+      if ("enroute".equals(o.getStatus())) {
+        nudgeCourier(o, o.getPickupLat(), o.getPickupLng(), 0.28);
+      } else if ("delivering".equals(o.getStatus())) {
+        nudgeCourier(o, o.getPickupLat(), o.getPickupLng(), 0.28);
+      }
+
       int idx = indexOfStatus(o.getStatus());
-      if (idx < 0 || idx >= SeedData.STATUSES.size() - 1) continue;
+      if (idx < 0 || idx >= SeedData.STATUSES.size() - 1) {
+        orderRepository.save(o);
+        continue;
+      }
 
       var current = SeedData.STATUSES.get(idx);
-      Instant last = o.getTimeline().isEmpty() ? o.getCreatedAt() : o.getTimeline().get(o.getTimeline().size() - 1).getAt();
-      if (last == null) continue;
-      if (now.toEpochMilli() - last.toEpochMilli() < current.durationMs()) continue;
+      Instant entered = lastLifecycleTimestamp(o);
+      if (entered == null) continue;
+      if (now.toEpochMilli() - entered.toEpochMilli() < current.durationMs()) {
+        orderRepository.save(o);
+        continue;
+      }
 
       var next = SeedData.STATUSES.get(idx + 1);
-      o.setStatus(next.key());
-      o.setStatusLabel(next.label());
-      o.setUpdatedAt(now);
-      o.getTimeline().add(new OrderEntity.TimelineEmbed(next.key(), next.label(), now));
-
-      if (o.getCourierLat() != null) {
-        if ("enroute".equals(next.key()) || "delivering".equals(next.key())) {
-          double t = "delivering".equals(next.key()) ? 0.15 : 0.35;
-          o.setCourierLat(o.getCourierLat() + (o.getPickupLat() - o.getCourierLat()) * t);
-          o.setCourierLng(o.getCourierLng() + (o.getPickupLng() - o.getCourierLng()) * t);
-        }
-      }
+      applyNextStatus(o, next.key(), next.label(), now);
       orderRepository.save(o);
     }
+  }
+
+  private void applyNextStatus(OrderEntity o, String key, String label, Instant now) {
+    o.setStatus(key);
+    o.setStatusLabel(label);
+    o.setUpdatedAt(now);
+    o.getTimeline().add(new OrderEntity.TimelineEmbed(key, label, now));
+
+    if ("enroute".equals(key)) {
+      // Start from laundry shop toward customer
+      PartnerEntity partner = catalogService.findById(o.getPartnerId()).orElse(null);
+      if (partner != null) {
+        o.setCourierLat(partner.getLat());
+        o.setCourierLng(partner.getLng());
+      }
+    } else if ("pickedup".equals(key) || "washing".equals(key)) {
+      PartnerEntity partner = catalogService.findById(o.getPartnerId()).orElse(null);
+      if (partner != null) {
+        o.setCourierLat(partner.getLat());
+        o.setCourierLng(partner.getLng());
+      }
+    } else if ("delivering".equals(key)) {
+      PartnerEntity partner = catalogService.findById(o.getPartnerId()).orElse(null);
+      if (partner != null) {
+        o.setCourierLat(partner.getLat());
+        o.setCourierLng(partner.getLng());
+      }
+    } else if ("delivered".equals(key)) {
+      o.setCourierLat(o.getPickupLat());
+      o.setCourierLng(o.getPickupLng());
+    }
+
+    orderMessageService.announceStatus(o, key);
+  }
+
+  /** Move courier toward a target each scheduler tick. */
+  private static void nudgeCourier(OrderEntity o, double targetLat, double targetLng, double step) {
+    if (o.getCourierLat() == null || o.getCourierLng() == null) {
+      o.setCourierLat(targetLat);
+      o.setCourierLng(targetLng);
+      return;
+    }
+    double lat = o.getCourierLat() + (targetLat - o.getCourierLat()) * step;
+    double lng = o.getCourierLng() + (targetLng - o.getCourierLng()) * step;
+    o.setCourierLat(lat);
+    o.setCourierLng(lng);
+  }
+
+  /** Prefer last lifecycle status event (ignore payment timeline noise). */
+  private Instant lastLifecycleTimestamp(OrderEntity o) {
+    for (int i = o.getTimeline().size() - 1; i >= 0; i--) {
+      OrderEntity.TimelineEmbed t = o.getTimeline().get(i);
+      if (indexOfStatus(t.getKey()) >= 0) {
+        return t.getAt();
+      }
+    }
+    return o.getCreatedAt();
+  }
+
+  private String etaLabel(OrderEntity o) {
+    if (o.getScheduledAt() != null && o.getScheduledAt().isAfter(Instant.now())) {
+      return "Scheduled";
+    }
+    PartnerEntity partner = catalogService.findById(o.getPartnerId()).orElse(null);
+    double distKm = 2.0;
+    if (partner != null) {
+      distKm = GeoUtils.haversineKm(partner.getLat(), partner.getLng(), o.getPickupLat(), o.getPickupLng());
+    }
+    int base = GeoUtils.etaMinutes(distKm);
+    return switch (o.getStatus()) {
+      case "confirmed" -> "~" + Math.min(25, Math.max(base, 10)) + " min";
+      case "enroute" -> {
+        if (o.getCourierLat() != null) {
+          double left = GeoUtils.haversineKm(o.getCourierLat(), o.getCourierLng(), o.getPickupLat(), o.getPickupLng());
+          yield "~" + Math.min(20, Math.max(3, (int) Math.round(left * 4 + 2))) + " min";
+        }
+        yield "~" + Math.min(15, Math.max(5, base / 2)) + " min";
+      }
+      case "pickedup" -> "At pickup";
+      case "washing" -> "~" + Math.min(30, Math.max(8, base)) + " min";
+      case "delivering" -> {
+        if (o.getCourierLat() != null) {
+          double left = GeoUtils.haversineKm(o.getCourierLat(), o.getCourierLng(), o.getPickupLat(), o.getPickupLng());
+          yield "~" + Math.min(20, Math.max(3, (int) Math.round(left * 4 + 2))) + " min";
+        }
+        yield "~" + Math.min(15, Math.max(5, base / 2)) + " min";
+      }
+      case "delivered", "rated" -> "Arrived";
+      default -> "—";
+    };
   }
 
   private Order toModel(OrderEntity o) {
@@ -328,18 +430,6 @@ public class OrderService {
     m.put("status", o.getStatus());
     m.put("created_at", o.getCreatedAt());
     return m;
-  }
-
-  private String etaLabel(OrderEntity o) {
-    if (o.getScheduledAt() != null) return o.getScheduledAt().toString();
-    return switch (o.getStatus()) {
-      case "confirmed" -> "Preparing…";
-      case "enroute", "delivering" -> "~10 min";
-      case "pickedup" -> "At pickup";
-      case "washing" -> "In progress";
-      case "delivered", "rated" -> "Arrived";
-      default -> "—";
-    };
   }
 
   private static String labelFor(String key) {

@@ -65,11 +65,11 @@ public final class SeedData {
   }
 
   public static final List<StatusDef> STATUSES = List.of(
-      new StatusDef("confirmed", "Request confirmed", 2500),
-      new StatusDef("enroute", "Partner heading to you", 5000),
-      new StatusDef("pickedup", "Picked up from you", 2500),
-      new StatusDef("washing", "Washing at the laundromat", 5000),
-      new StatusDef("delivering", "Out for delivery", 5000),
+      new StatusDef("confirmed", "Request confirmed", 3_000),
+      new StatusDef("enroute", "Partner heading to you", 6_000),
+      new StatusDef("pickedup", "Picked up from you", 3_000),
+      new StatusDef("washing", "Washing at the laundromat", 7_000),
+      new StatusDef("delivering", "Out for delivery", 6_000),
       new StatusDef("delivered", "Delivered", 0)
   );
 

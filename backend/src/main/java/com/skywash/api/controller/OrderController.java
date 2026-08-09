@@ -1,11 +1,7 @@
 package com.skywash.api.controller;
 
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,6 +18,7 @@ import com.skywash.api.config.ApiException;
 import com.skywash.api.entity.UserEntity;
 import com.skywash.api.model.Order;
 import com.skywash.api.service.AuthService;
+import com.skywash.api.service.OrderMessageService;
 import com.skywash.api.service.OrderService;
 
 @RestController
@@ -30,11 +27,16 @@ public class OrderController {
 
   private final OrderService orderService;
   private final AuthService authService;
-  private final ConcurrentHashMap<String, List<Map<String, Object>>> messages = new ConcurrentHashMap<>();
+  private final OrderMessageService orderMessageService;
 
-  public OrderController(OrderService orderService, AuthService authService) {
+  public OrderController(
+      OrderService orderService,
+      AuthService authService,
+      OrderMessageService orderMessageService
+  ) {
     this.orderService = orderService;
     this.authService = authService;
+    this.orderMessageService = orderMessageService;
   }
 
   @PostMapping
@@ -88,33 +90,27 @@ public class OrderController {
 
   @GetMapping("/{id}/messages")
   public Map<String, Object> listMessages(@PathVariable String id) {
-    orderService.get(id); // ensure exists
-    return Map.of("messages", messages.getOrDefault(id, List.of()));
+    Map<String, Object> detail = orderService.getDetail(id);
+    return Map.of(
+        "messages", orderMessageService.list(id),
+        "order", detail
+    );
   }
 
   @PostMapping("/{id}/messages")
   public Map<String, Object> sendMessage(@PathVariable String id, @RequestBody Map<String, Object> body) {
-    orderService.get(id);
+    // Fresh detail so assist replies match the live stepper / ETA
+    Map<String, Object> detail = orderService.getDetail(id);
+    Order order = orderService.get(id);
     String text = body.get("text") == null ? "" : String.valueOf(body.get("text")).trim();
     if (text.isEmpty()) throw new ApiException(HttpStatus.BAD_REQUEST, "text is required");
-    String sender = body.get("sender") == null ? "customer" : String.valueOf(body.get("sender"));
 
-    Map<String, Object> msg = new LinkedHashMap<>();
-    msg.put("id", UUID.randomUUID().toString());
-    msg.put("sender", sender);
-    msg.put("text", text);
-    msg.put("created_at", java.time.Instant.now().toString());
-
-    messages.computeIfAbsent(id, k -> new CopyOnWriteArrayList<>()).add(msg);
-
-    // demo auto-reply
-    Map<String, Object> reply = new LinkedHashMap<>();
-    reply.put("id", UUID.randomUUID().toString());
-    reply.put("sender", "partner");
-    reply.put("text", "Got it, thanks!");
-    reply.put("created_at", java.time.Instant.now().toString());
-    messages.get(id).add(reply);
-
-    return Map.of("messages", messages.get(id));
+    List<Map<String, Object>> messages = orderMessageService.sendCustomerMessage(order, text);
+    // Re-read in case scheduler moved status mid-request
+    detail = orderService.getDetail(id);
+    return Map.of(
+        "messages", messages,
+        "order", detail
+    );
   }
 }

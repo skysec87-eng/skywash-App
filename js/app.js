@@ -33,11 +33,23 @@ let lastQuote = null;
 let currentOrderId = null;
 let currentOrderSnapshot = null;
 let pollTimer = null;
+let lastPolledStatus = null;
 let authToken = null;
 let currentUser = null;
 let quoteTimer = null;
 let storeMarkers = {};
 let pendingAuthEmail = '';
+
+function getStoredActiveOrderId(){
+  try{ return sessionStorage.getItem('skywash_active_order'); }catch(_){ return null; }
+}
+function setActiveOrderId(id){
+  currentOrderId = id || null;
+  try{
+    if(id) sessionStorage.setItem('skywash_active_order', id);
+    else sessionStorage.removeItem('skywash_active_order');
+  }catch(_){}
+}
 let pendingProfileToken = '';
 let pendingFromGoogle = false;
 let googleClientId = '500952331386-52o07dcf0ujd76134u9aaia4gvjqgamp.apps.googleusercontent.com';
@@ -752,8 +764,15 @@ const requestBtn=document.getElementById('requestBtn');
 geoBtn.onclick=()=>{
   if(!navigator.geolocation){ alert("Geolocation isn't available in this browser."); return; }
   geoBtn.style.opacity=0.5;
-  navigator.geolocation.getCurrentPosition(pos=>{
-    userLoc = { lat:pos.coords.latitude, lng:pos.coords.longitude, address:`Current location (${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)})` };
+  navigator.geolocation.getCurrentPosition(async pos=>{
+    const lat = pos.coords.latitude;
+    const lng = pos.coords.longitude;
+    let address = `Current location (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+    try{
+      const geo = await api('/api/geocode', { method:'POST', body: JSON.stringify({ lat, lng }) });
+      if(geo.formatted_address) address = geo.formatted_address;
+    }catch(_){ /* keep coordinate fallback */ }
+    userLoc = { lat, lng, address };
     addrInput.value = userLoc.address;
     placeUserMarker();
     onLocationSet();
@@ -1141,7 +1160,7 @@ async function resetToForm(){
   matchedProvider=null;
   nearbyOffers=[];
   currentOrderSnapshot=null;
-  currentOrderId=null;
+  setActiveOrderId(null);
   showStep('stepForm');
 }
 document.getElementById('cancelTripBtn').onclick = ()=> resetToForm();
@@ -1206,7 +1225,7 @@ async function startTrip(){
 
   try{
     const created = await api('/api/orders', { method:'POST', body: JSON.stringify(payload) });
-    currentOrderId = created.id;
+    setActiveOrderId(created.id);
     // Prefer detail endpoint for snake_case consistency
     const detail = await api('/api/orders/' + currentOrderId);
     applyOrderDetail(detail);
@@ -1227,8 +1246,10 @@ async function startTrip(){
           })
         });
         if(pay.authorization_url && !pay.demo){
-          window.open(pay.authorization_url, '_blank', 'noopener,noreferrer');
-          document.getElementById('liveText').textContent = 'Complete payment in the Paystack tab';
+          document.getElementById('liveText').textContent = 'Redirecting to Paystack…';
+          // Same-tab checkout so Paystack callback can restore this trip UI
+          location.assign(pay.authorization_url);
+          return;
         } else if(pay.authorization_url){
           console.info('Paystack stub', pay);
         }
@@ -1238,56 +1259,170 @@ async function startTrip(){
       }
     }
 
-    document.getElementById('liveText').textContent='Trip in progress';
+    document.getElementById('liveText').textContent='Trip live';
+    lastPolledStatus = detail.status;
     stopPolling();
-    pollTimer = setInterval(pollOrder, 2000);
+    pollTimer = setInterval(pollOrder, 1500);
+    try{
+      const msgs = await api('/api/orders/' + currentOrderId + '/messages');
+      renderChatMessages(msgs.messages || []);
+      document.getElementById('chatPanel').classList.add('show');
+    }catch(_){}
   }catch(e){
     alert('Could not create order: ' + e.message);
     showStep('stepMatched');
   }
 }
 
+async function resumeTripFromOrder(orderId, opts = {}){
+  if(!orderId) return false;
+  const detail = await api('/api/orders/' + orderId);
+  if(detail.status === 'cancelled' || detail.status === 'rated'){
+    setActiveOrderId(null);
+    return false;
+  }
+
+  setActiveOrderId(orderId);
+  currentOrderSnapshot = detail;
+  lastPolledStatus = detail.status;
+  const partner = detail.partner || {};
+  matchedProvider = {
+    id: partner.id,
+    name: partner.name || detail.provider_name || 'Partner',
+    rating: partner.rating != null ? partner.rating : 0,
+    lat: partner.lat,
+    lng: partner.lng
+  };
+  if(matchedProvider.id && storeMarkers[matchedProvider.id]){
+    storeMarkers[matchedProvider.id].setIcon(ICON_STORE_ACTIVE);
+  }
+
+  buildStepperUI();
+  document.getElementById('tripAvatar').textContent = partnerInitials(matchedProvider.name);
+  document.getElementById('tripName').textContent = matchedProvider.name;
+  document.getElementById('tripStars').textContent = matchedProvider.rating
+    ? `★ ${Number(matchedProvider.rating).toFixed(1)}`
+    : '★ —';
+  document.getElementById('liveBadge').classList.add('show');
+  mapFab.classList.add('live');
+  document.getElementById('liveText').textContent = opts.paid
+    ? 'Payment received — trip live'
+    : (detail.status_label || 'Trip live');
+
+  if(typeof enterApp === 'function') enterApp();
+  activateTab('book');
+  showStep('stepTrip');
+  applyOrderDetail(detail);
+
+  stopPolling();
+  if(detail.status !== 'delivered' && detail.status !== 'rated'){
+    pollTimer = setInterval(pollOrder, 1500);
+  }
+
+  // Always load assist thread on trip restore
+  try{
+    const data = await api('/api/orders/' + currentOrderId + '/messages');
+    renderChatMessages(data.messages || []);
+    if(data.order) syncTripFromOrder(data.order);
+  }catch(_){}
+  if(opts.openChat !== false){
+    document.getElementById('chatPanel').classList.add('show');
+  }
+  if(detail.status === 'delivered'){
+    setTimeout(showRating, 400);
+    return true;
+  }
+  return true;
+}
+
 async function pollOrder(){
   if(!currentOrderId) return;
   try{
     const detail = await api('/api/orders/' + currentOrderId);
-    applyOrderDetail(detail);
-    if(detail.status === 'delivered' || detail.status === 'rated'){
-      stopPolling();
-      setTimeout(showRating, 600);
+    const prev = lastPolledStatus;
+    syncTripFromOrder(detail);
+    if(detail.status !== prev){
+      try{
+        const data = await api('/api/orders/' + currentOrderId + '/messages');
+        renderChatMessages(data.messages || []);
+      }catch(_){}
     }
   }catch(e){
     console.warn('poll failed', e);
   }
 }
 
+function syncTripFromOrder(detail){
+  if(!detail || !detail.id) return;
+  const statusChanged = detail.status !== lastPolledStatus;
+  applyOrderDetail(detail);
+  document.getElementById('liveText').textContent = detail.status_label || detail.status || 'Trip live';
+  lastPolledStatus = detail.status;
+
+  if(statusChanged && (detail.status === 'enroute' || detail.status === 'delivering')){
+    openMobileMap();
+  }
+
+  if(detail.status === 'delivered'){
+    stopPolling();
+    setTimeout(showRating, 600);
+  } else if(detail.status === 'rated' || detail.status === 'cancelled'){
+    stopPolling();
+    setActiveOrderId(null);
+  }
+}
+
 function applyOrderDetail(detail){
+  currentOrderSnapshot = detail;
+  if(detail.pickup && detail.pickup.lat != null){
+    userLoc = {
+      lat: detail.pickup.lat,
+      lng: detail.pickup.lng,
+      address: detail.pickup.address || (userLoc && userLoc.address) || ''
+    };
+  }
+
   updateStepperUI(detail.status, detail.timeline);
   document.getElementById('tripEta').textContent = detail.eta_label || '—';
   document.getElementById('tripStatusBig').textContent = detail.status_label || detail.status;
 
-  const partner = detail.partner || {};
+  const partner = detail.partner || matchedProvider || {};
   if(partner.name) document.getElementById('tripName').textContent = partner.name;
   if(partner.rating != null) document.getElementById('tripStars').textContent = `★ ${Number(partner.rating).toFixed(1)}`;
 
   const loc = detail.partner_location;
   if(loc && (detail.status === 'enroute' || detail.status === 'delivering')){
-    animateRiderToward(loc, detail.status === 'delivering' ? userLoc : (partner.lat != null ? partner : matchedProvider), userLoc);
+    const destination = userLoc || (partner.lat != null ? partner : matchedProvider);
+    animateRiderToward(loc, partner.lat != null ? partner : matchedProvider, destination);
   }
   if(detail.status === 'pickedup' || detail.status === 'washing'){
     if(riderMarker){ map.removeLayer(riderMarker); riderMarker=null; }
     if(routeLine){ map.removeLayer(routeLine); routeLine=null; }
+    if(partner.lat != null && partner.lng != null){
+      map.flyTo([partner.lat, partner.lng], 14, { duration: 0.5 });
+    }
+  }
+  if(detail.status === 'delivered' && userLoc){
+    if(riderMarker){ map.removeLayer(riderMarker); riderMarker=null; }
+    riderMarker = L.marker([userLoc.lat, userLoc.lng], {icon:ICON_RIDER}).addTo(map);
   }
 }
 
 function animateRiderToward(fromPoint, partnerPoint, toPoint){
+  if(!fromPoint || fromPoint.lat == null) return;
   const from = [fromPoint.lat, fromPoint.lng];
-  const to = toPoint ? [toPoint.lat, toPoint.lng] : [partnerPoint.lat, partnerPoint.lng];
+  const dest = toPoint && toPoint.lat != null
+    ? [toPoint.lat, toPoint.lng]
+    : (partnerPoint && partnerPoint.lat != null ? [partnerPoint.lat, partnerPoint.lng] : from);
   if(riderMarker) map.removeLayer(riderMarker);
   if(routeLine) map.removeLayer(routeLine);
   riderMarker = L.marker(from, {icon:ICON_RIDER}).addTo(map);
-  routeLine = L.polyline([from, to], {color:'#f5a623', weight:3, dashArray:'6,8', opacity:0.85}).addTo(map);
-  map.flyToBounds(L.latLngBounds([from,to]), {padding:[80,80], duration:0.4});
+  routeLine = L.polyline([from, dest], {color:'#f5a623', weight:3, dashArray:'6,8', opacity:0.85}).addTo(map);
+  try{
+    map.flyToBounds(L.latLngBounds([from, dest]), {padding:[80,80], duration:0.35, maxZoom:15});
+  }catch(_){
+    map.setView(from, 14);
+  }
 }
 
 let selectedRatingVal = 5;
@@ -1323,7 +1458,7 @@ document.getElementById('doneBtn').onclick = async ()=>{
   mapFab.classList.remove('live');
   matchedProvider=null;
   currentOrderSnapshot=null;
-  currentOrderId=null;
+  setActiveOrderId(null);
   promoCode='';
   document.getElementById('promoApplied').classList.remove('show');
   document.getElementById('promoInput').value='';
@@ -1334,14 +1469,31 @@ document.getElementById('doneBtn').onclick = async ()=>{
 const chatToggleBtn=document.getElementById('chatToggleBtn');
 const chatPanel=document.getElementById('chatPanel');
 const chatLog=document.getElementById('chatLog');
+
+function chatWho(sender){
+  if(sender === 'customer') return 'me';
+  if(sender === 'system') return 'system';
+  return 'them'; // assist | partner
+}
+
+function renderChatMessages(messages){
+  chatLog.innerHTML = '';
+  (messages || []).forEach(m => addChatMsg(m.text, chatWho(m.sender)));
+}
+
+async function refreshChatQuiet(){
+  if(!currentOrderId) return;
+  try{
+    const data = await api('/api/orders/' + currentOrderId + '/messages');
+    renderChatMessages(data.messages || []);
+    if(data.order) syncTripFromOrder(data.order);
+  }catch(_){}
+}
+
 chatToggleBtn.onclick= async ()=>{
   chatPanel.classList.toggle('show');
   if(chatPanel.classList.contains('show') && currentOrderId){
-    try{
-      const data = await api('/api/orders/' + currentOrderId + '/messages');
-      chatLog.innerHTML = '';
-      (data.messages || []).forEach(m => addChatMsg(m.text, m.sender === 'customer' ? 'me' : 'them'));
-    }catch(_){}
+    await refreshChatQuiet();
   }
 };
 document.getElementById('chatQuick').addEventListener('click', async (e)=>{
@@ -1352,8 +1504,9 @@ document.getElementById('chatQuick').addEventListener('click', async (e)=>{
       method:'POST',
       body: JSON.stringify({ text: btn.dataset.msg, sender: 'customer' })
     });
-    chatLog.innerHTML = '';
-    (data.messages || []).forEach(m => addChatMsg(m.text, m.sender === 'customer' ? 'me' : 'them'));
+    renderChatMessages(data.messages || []);
+    if(data.order) syncTripFromOrder(data.order);
+    chatPanel.classList.add('show');
   }catch(err){
     alert('Chat failed: ' + err.message);
   }
@@ -1377,24 +1530,9 @@ async function boot(){
     return;
   }
 
-  // Paystack callback return: ?payment=callback&reference=...
-  try{
-    const params = new URLSearchParams(location.search);
-    if(params.get('payment') === 'callback' && params.get('reference')){
-      const verified = await api('/api/payments/verifications', {
-        method:'POST',
-        body: JSON.stringify({ reference: params.get('reference') })
-      });
-      if(verified.status === 'success'){
-        alert('Payment successful' + (verified.amount ? ` — ₦${verified.amount}` : ''));
-      } else {
-        alert('Payment status: ' + (verified.status || 'unknown'));
-      }
-      history.replaceState({}, '', location.pathname);
-    }
-  }catch(e){
-    console.warn('payment verify failed', e);
-  }
+  const payParams = new URLSearchParams(location.search);
+  const paymentRef = payParams.get('payment') === 'callback' ? payParams.get('reference') : null;
+  let paymentVerified = null;
 
   try{
     const svc = await api('/api/services');
@@ -1420,6 +1558,49 @@ async function boot(){
   } else {
     showOnboarding('welcome');
     initGoogleSignIn();
+  }
+
+  // Paystack return: verify, then restore trip + Message provider UI
+  if(paymentRef){
+    try{
+      paymentVerified = await api('/api/payments/verifications', {
+        method:'POST',
+        body: JSON.stringify({ reference: paymentRef })
+      });
+      history.replaceState({}, '', location.pathname);
+      const orderId = paymentVerified.order_id
+        || (paymentVerified.order && paymentVerified.order.id)
+        || getStoredActiveOrderId();
+      if(orderId){
+        await resumeTripFromOrder(orderId, {
+          paid: paymentVerified.status === 'success',
+          openChat: true
+        });
+        if(paymentVerified.status === 'success'){
+          document.getElementById('liveText').textContent =
+            'Payment successful' + (paymentVerified.amount ? ` — ₦${paymentVerified.amount}` : '') + ' · trip in progress';
+        }
+      } else if(paymentVerified.status === 'success'){
+        alert('Payment successful' + (paymentVerified.amount ? ` — ₦${paymentVerified.amount}` : '') + ', but the order could not be restored. Check My orders.');
+      } else {
+        alert('Payment status: ' + (paymentVerified.status || 'unknown'));
+      }
+      return;
+    }catch(e){
+      console.warn('payment verify failed', e);
+      history.replaceState({}, '', location.pathname);
+    }
+  }
+
+  // Resume in-progress trip after refresh (e.g. mid-pickup)
+  const activeId = getStoredActiveOrderId();
+  if(activeId && isLoggedIn()){
+    try{
+      await resumeTripFromOrder(activeId, { openChat: false });
+    }catch(e){
+      console.warn('resume trip failed', e);
+      setActiveOrderId(null);
+    }
   }
 }
 

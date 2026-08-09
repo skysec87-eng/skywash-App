@@ -146,6 +146,9 @@ public class PaystackService {
           Map<String, Object> paid = orderService.markPaidByReference(
               data.path("reference").asText(reference), channel, orderId);
           out.put("order", paid);
+          if (paid.get("id") != null) {
+            out.put("order_id", String.valueOf(paid.get("id")));
+          }
         } catch (ApiException ex) {
           out.put("order_update_error", ex.getMessage());
         }

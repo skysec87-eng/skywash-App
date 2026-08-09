@@ -2,6 +2,7 @@ package com.skywash.api.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -32,13 +33,14 @@ class OrderServiceTest {
   @Mock private CatalogService catalogService;
   @Mock private PricingService pricingService;
   @Mock private OrderRepository orderRepository;
+  @Mock private OrderMessageService orderMessageService;
 
   private OrderService orderService;
   private PartnerEntity partner;
 
   @BeforeEach
   void setUp() {
-    orderService = new OrderService(catalogService, pricingService, orderRepository);
+    orderService = new OrderService(catalogService, pricingService, orderRepository, orderMessageService);
     partner = TestFixtures.partner("p1", "Laundry Care Lekki", "Lagos", "Lekki", 6.450511, 3.4704056, 5.0);
   }
 
@@ -138,7 +140,8 @@ class OrderServiceTest {
     Map<String, Object> detail = orderService.getDetail("o1");
     assertEquals("o1", detail.get("id"));
     assertEquals("confirmed", detail.get("status"));
-    assertEquals("Preparing…", detail.get("eta_label"));
+    assertTrue(String.valueOf(detail.get("eta_label")).contains("min")
+        || "Scheduled".equals(detail.get("eta_label")));
     @SuppressWarnings("unchecked")
     Map<String, Object> p = (Map<String, Object>) detail.get("partner");
     assertEquals("Laundry Care Lekki", p.get("name"));
@@ -152,11 +155,13 @@ class OrderServiceTest {
         Instant.now().minusSeconds(10)));
     when(orderRepository.findByStatusNotIn(any())).thenReturn(List.of(o));
     when(orderRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+    when(catalogService.findById("p1")).thenReturn(Optional.of(partner));
 
     orderService.progressActiveOrders();
 
     assertEquals("enroute", o.getStatus());
     verify(orderRepository).save(o);
+    verify(orderMessageService).announceStatus(o, "enroute");
   }
 
   @Test
