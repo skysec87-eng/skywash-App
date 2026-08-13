@@ -6,6 +6,20 @@
 <title>skyWash Cleaning — On-Demand Laundry Pickup</title>
 <meta name="description" content="Book on-demand laundry pickup and delivery wherever you are with skyWash Cleaning.">
 <meta name="theme-color" content="#08283a">
+<script>
+(function () {
+  try {
+    var pref = localStorage.getItem('skywash_theme') || 'system';
+    var dark = pref === 'dark' || (pref === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+    document.documentElement.setAttribute('data-theme-pref', pref);
+    var lang = localStorage.getItem('skywash_locale') || 'en';
+    document.documentElement.lang = lang;
+    var meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', dark ? '#041018' : '#08283a');
+  } catch (e) {}
+})();
+</script>
 <link rel="manifest" href="/manifest.json">
 <link rel="icon" href="/icons/favicon-32.png" sizes="32x32">
 <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
@@ -15,7 +29,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<link rel="stylesheet" href="/css/styles.css?v=25">
+<link rel="stylesheet" href="/css/styles.css?v=33">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
@@ -32,59 +46,59 @@
           <span class="mark" aria-hidden="true"></span>
           <h1 class="ob-logo">sky<span>Wash</span></h1>
         </div>
-        <p class="ob-kicker">Fresh laundry, on demand</p>
+        <p class="ob-kicker" data-i18n="ob.kicker">Fresh laundry, on demand</p>
       </div>
       <div class="ob-bottom">
-        <p class="ob-tagline">Book a pickup in minutes — partners come to you.</p>
+        <p class="ob-tagline" data-i18n="ob.tagline">Book a pickup in minutes — partners come to you.</p>
         <div class="ob-actions">
-          <button type="button" class="ob-cta" id="obGetStarted">Create account</button>
-          <button type="button" class="ob-secondary" id="obSignIn">Log in</button>
+          <button type="button" class="ob-cta" id="obGetStarted" data-i18n="ob.create">Create account</button>
+          <button type="button" class="ob-secondary" id="obSignIn" data-i18n="ob.login">Log in</button>
           <div class="ob-or" id="obGoogleWrap">
-            <span>or</span>
+            <span data-i18n="ob.or">or</span>
             <div id="obGoogleBtn" class="ob-google"></div>
             <p class="auth-error hidden" id="obGoogleError"></p>
           </div>
         </div>
-        <button type="button" class="ob-link" id="obForgot">Forgot access? Reset with email</button>
+        <button type="button" class="ob-link" id="obForgot" data-i18n="ob.forgot">Forgot access? Reset with email</button>
       </div>
     </div>
 
     <div class="ob-step ob-form-step hidden" id="obEmail">
       <button type="button" class="ob-back" id="obBackEmail" aria-label="Back">←</button>
-      <h2 id="obEmailTitle">Create your account</h2>
-      <p class="ob-copy" id="obEmailCopy">Enter your email — we’ll send a one-time code. No password needed.</p>
+      <h2 id="obEmailTitle" data-i18n="ob.emailTitle">Create your account</h2>
+      <p class="ob-copy" id="obEmailCopy" data-i18n="ob.emailCopy">Enter your email — we’ll send a one-time code. No password needed.</p>
       <form id="obEmailForm">
-        <label class="field-label" for="obEmailInput">Email</label>
+        <label class="field-label" for="obEmailInput" data-i18n="ob.email">Email</label>
         <input type="email" id="obEmailInput" class="auth-input" placeholder="you@email.com" autocomplete="email" required>
         <p class="auth-error hidden" id="obEmailError"></p>
-        <button type="submit" class="ob-cta" id="obEmailBtn">Continue</button>
+        <button type="submit" class="ob-cta" id="obEmailBtn" data-i18n="ob.continue">Continue</button>
       </form>
     </div>
 
     <div class="ob-step ob-form-step hidden" id="obOtp">
       <button type="button" class="ob-back" id="obBackOtp" aria-label="Back">←</button>
-      <h2>Enter the code</h2>
-      <p class="ob-copy" id="obOtpCopy">We sent a 6-digit code to your email.</p>
+      <h2 data-i18n="ob.codeTitle">Enter the code</h2>
+      <p class="ob-copy" id="obOtpCopy" data-i18n="ob.codeCopy">We sent a 6-digit code to your email.</p>
       <form id="obOtpForm">
-        <label class="field-label" for="obOtpInput">Verification code</label>
+        <label class="field-label" for="obOtpInput" data-i18n="ob.code">Verification code</label>
         <input type="text" id="obOtpInput" class="auth-input auth-otp-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••••" autocomplete="one-time-code" required>
-        <button type="button" class="auth-resend" id="obResendBtn">Resend code</button>
+        <button type="button" class="auth-resend" id="obResendBtn" data-i18n="ob.resend">Resend code</button>
         <p class="auth-error hidden" id="obOtpError"></p>
-        <button type="submit" class="ob-cta" id="obOtpBtn">Verify</button>
+        <button type="submit" class="ob-cta" id="obOtpBtn" data-i18n="ob.verify">Verify</button>
       </form>
     </div>
 
     <div class="ob-step ob-form-step hidden" id="obProfile">
       <button type="button" class="ob-back" id="obBackProfile" aria-label="Back">←</button>
-      <h2>Almost there</h2>
-      <p class="ob-copy">Add your name and phone so partners can reach you at pickup.</p>
+      <h2 data-i18n="ob.almost">Almost there</h2>
+      <p class="ob-copy" data-i18n="ob.profileCopy">Add your name and phone so partners can reach you at pickup.</p>
       <form id="obProfileForm">
-        <label class="field-label" for="obNameInput">Name</label>
+        <label class="field-label" for="obNameInput" data-i18n="ob.name">Name</label>
         <input type="text" id="obNameInput" class="auth-input" placeholder="Your name" autocomplete="name" required>
-        <label class="field-label" for="obPhoneInput">Phone</label>
+        <label class="field-label" for="obPhoneInput" data-i18n="ob.phone">Phone</label>
         <input type="tel" id="obPhoneInput" class="auth-input" placeholder="+234…" autocomplete="tel" required>
         <p class="auth-error hidden" id="obProfileError"></p>
-        <button type="submit" class="ob-cta" id="obProfileBtn">Start booking</button>
+        <button type="submit" class="ob-cta" id="obProfileBtn" data-i18n="ob.start">Start booking</button>
       </form>
     </div>
   </div>
@@ -95,14 +109,15 @@
     <div class="brand">
       <span class="mark" aria-hidden="true"></span>
       <h1>sky<span>Wash</span></h1>
-      <span class="tag">On-demand cleaning</span>
+      <span class="tag" data-i18n="brand.tag">On-demand cleaning</span>
     </div>
     <div class="header-right">
       <div class="tabs">
-        <button id="tabBook" class="nav-btn active" data-tab="book">Book pickup</button>
-        <button id="tabBrowse" class="nav-btn" data-tab="browse">Browse map</button>
-        <button id="tabHistory" class="nav-btn" data-tab="history">My orders</button>
+        <button id="tabBook" class="nav-btn active" data-tab="book" data-i18n="nav.bookDesktop">Book pickup</button>
+        <button id="tabBrowse" class="nav-btn" data-tab="browse" data-i18n="nav.mapDesktop">Browse map</button>
+        <button id="tabHistory" class="nav-btn" data-tab="history" data-i18n="nav.ordersDesktop">My orders</button>
       </div>
+      <button type="button" class="theme-toggle-btn" id="headerThemeBtn" aria-label="Toggle light or dark mode" title="Theme">☾</button>
       <div class="auth-menu" id="authChip"></div>
     </div>
   </header>
@@ -113,12 +128,12 @@
       <div class="panel" id="panelBooking">
 
         <div id="stepForm">
-          <h2>What are we washing today?</h2>
-          <p class="sub">Get matched with the nearest laundry partner, like ordering a ride.</p>
+          <h2 data-i18n="book.title">What are we washing today?</h2>
+          <p class="sub" data-i18n="book.sub">Get matched with the nearest laundry partner, like ordering a ride.</p>
 
           <div class="schedule-toggle">
-            <button id="scheduleNowBtn" class="active">Pickup now</button>
-            <button id="scheduleLaterBtn">Schedule for later</button>
+            <button id="scheduleNowBtn" class="active" data-i18n="book.now">Pickup now</button>
+            <button id="scheduleLaterBtn" data-i18n="book.later">Schedule for later</button>
           </div>
           <div class="schedule-time-row" id="scheduleTimeRow">
             <label class="field-label" for="scheduleDateTime">Pickup date &amp; time</label>
@@ -126,16 +141,16 @@
             <p class="schedule-hint">Opens your phone’s calendar — pick any day and time in the next 30 days.</p>
           </div>
 
-          <label class="field-label">Pickup location</label>
+          <label class="field-label" data-i18n="book.location">Pickup location</label>
           <div class="addr-input-row">
-            <input type="text" id="addrInput" placeholder="Enter your pickup address" autocomplete="off">
+            <input type="text" id="addrInput" data-i18n-placeholder="book.addrPh" placeholder="Enter your pickup address" autocomplete="off">
             <button class="geo-btn" id="geoBtn" title="Use current location">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
             </button>
           </div>
-          <div class="loc-confirmed" id="locConfirmed">✓ Location set — matching nearby partners</div>
+          <div class="loc-confirmed" id="locConfirmed" data-i18n="book.locSet">✓ Location set — matching nearby partners</div>
 
-          <label class="field-label">Service type</label>
+          <label class="field-label" data-i18n="book.services">Service type</label>
           <p class="service-hint">Select all that apply — you can pick more than one.</p>
           <div class="service-grid" id="serviceGrid" role="group" aria-label="Service types">
             <button type="button" class="service-card selected" role="checkbox" aria-checked="true" data-service="wash" data-rate="500" data-unit="kg">
@@ -156,7 +171,7 @@
             </button>
           </div>
 
-          <label class="field-label" id="weightLabel">Estimated weight</label>
+          <label class="field-label" id="weightLabel" data-i18n="book.weight">Estimated weight</label>
           <div class="weight-row">
             <div>
               <div class="val" id="weightVal">3 kg</div>
@@ -168,28 +183,28 @@
             </div>
           </div>
 
-          <label class="field-label">Payment method</label>
+          <label class="field-label" data-i18n="book.payment">Payment method</label>
           <div class="payment-grid" id="paymentGrid">
             <div class="pay-option selected" data-pay="card">
               <span class="pay-icon">💳</span>
-              <div><div class="pay-name">Debit / Credit Card</div><div class="pay-sub">Visa, Mastercard, Verve</div></div>
+              <div><div class="pay-name" data-i18n="pay.card">Debit / Credit Card</div><div class="pay-sub">Visa, Mastercard, Verve</div></div>
               <span class="radio"></span>
             </div>
             <div class="pay-option" data-pay="transfer">
               <span class="pay-icon">🏦</span>
-              <div><div class="pay-name">Bank Transfer</div><div class="pay-sub">Instant confirmation</div></div>
+              <div><div class="pay-name" data-i18n="pay.transfer">Bank Transfer</div><div class="pay-sub">Instant confirmation</div></div>
               <span class="radio"></span>
             </div>
             <div class="pay-option" data-pay="cash">
               <span class="pay-icon">💵</span>
-              <div><div class="pay-name">Cash on Pickup</div><div class="pay-sub">Pay the courier directly</div></div>
+              <div><div class="pay-name" data-i18n="pay.cash">Cash on Pickup</div><div class="pay-sub">Pay the courier directly</div></div>
               <span class="radio"></span>
             </div>
           </div>
 
           <div class="promo-row">
-            <input type="text" id="promoInput" placeholder="Promo code">
-            <button id="promoBtn">Apply</button>
+            <input type="text" id="promoInput" data-i18n-placeholder="book.promo" placeholder="Promo code">
+            <button id="promoBtn" data-i18n="book.apply">Apply</button>
           </div>
           <div class="promo-applied" id="promoApplied">✓ SKY10 applied — 10% off</div>
 
@@ -216,21 +231,21 @@
         </div>
 
         <div id="stepMatched" class="hidden">
-          <h2>Choose a partner</h2>
-          <p class="sub">Nearby laundries — pick who you want, then confirm.</p>
+          <h2 data-i18n="match.title">Choose a partner</h2>
+          <p class="sub" data-i18n="match.sub">Nearby laundries — pick who you want, then confirm.</p>
           <div class="offer-list" id="offerList"></div>
           <div class="estimate-box">
-            <div class="row"><span>Estimated pickup time</span><span id="matchEta">—</span></div>
-            <div class="row total"><span>Total to pay</span><span id="matchTotal">—</span></div>
+            <div class="row"><span data-i18n="match.eta">Estimated pickup time</span><span id="matchEta">—</span></div>
+            <div class="row total"><span data-i18n="match.total">Total to pay</span><span id="matchTotal">—</span></div>
           </div>
-          <button class="primary-btn" id="confirmBtn" disabled>Select a partner first</button>
-          <button class="ghost-btn" id="cancelMatchBtn">Cancel</button>
+          <button class="primary-btn" id="confirmBtn" disabled data-i18n="match.selectFirst">Select a partner first</button>
+          <button class="ghost-btn" id="cancelMatchBtn" data-i18n="match.cancel">Cancel</button>
         </div>
 
         <div id="stepTrip" class="hidden">
           <div class="eta-banner">
-            <div><div class="lbl">Status</div><div class="big" id="tripStatusBig">Confirmed</div></div>
-            <div style="text-align:right"><div class="lbl">ETA</div><div class="big" id="tripEta">—</div></div>
+            <div><div class="lbl" data-i18n="trip.status">Status</div><div class="big" id="tripStatusBig">Confirmed</div></div>
+            <div style="text-align:right"><div class="lbl" data-i18n="trip.eta">ETA</div><div class="big" id="tripEta">—</div></div>
           </div>
           <div class="provider-card" style="margin-bottom:6px;">
             <div class="provider-avatar" id="tripAvatar">—</div>
@@ -246,7 +261,7 @@
 
           <button class="chat-toggle-btn" id="chatToggleBtn">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
-            skyWash Assist
+            <span data-i18n="trip.assist">skyWash Assist</span>
           </button>
           <div class="chat-panel" id="chatPanel">
             <div class="chat-log" id="chatLog"></div>
@@ -258,77 +273,100 @@
             </div>
           </div>
 
-          <button class="ghost-btn" id="cancelTripBtn">Cancel order</button>
+          <button class="ghost-btn" id="cancelTripBtn" data-i18n="trip.cancel">Cancel order</button>
         </div>
 
         <div id="stepRating" class="hidden">
           <div class="rating-wrap">
             <div class="check">✓</div>
-            <h3>Delivered!</h3>
+            <h3 data-i18n="rating.title">Delivered!</h3>
             <p id="ratingSub">Your laundry is fresh and folded. How was <span id="ratingProviderName">your provider</span>?</p>
             <div class="stars-input" id="starsInput">
               <button data-star="1">★</button><button data-star="2">★</button><button data-star="3">★</button>
               <button data-star="4">★</button><button data-star="5">★</button>
             </div>
-            <button class="primary-btn" id="doneBtn">Book another pickup</button>
+            <button class="primary-btn" id="doneBtn" data-i18n="rating.again">Book another pickup</button>
           </div>
         </div>
 
       </div>
 
       <div class="panel hidden" id="panelBrowse">
-        <h2>All laundry partners</h2>
-        <p class="sub">Browse every provider on the map.</p>
+        <h2 data-i18n="browse.title">All laundry partners</h2>
+        <p class="sub" data-i18n="browse.sub">Browse every provider on the map.</p>
         <div class="search-box">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-          <input type="text" id="browseSearch" placeholder="Search by name, area, or city…">
+          <input type="text" id="browseSearch" data-i18n-placeholder="browse.search" placeholder="Search by name, area, or city…">
         </div>
         <div id="browseList"></div>
       </div>
 
       <div class="panel hidden" id="panelHistory">
-        <h2>My orders</h2>
-        <p class="sub">Your past pickups with skyWash Cleaning.</p>
+        <h2 data-i18n="orders.title">My orders</h2>
+        <p class="sub" data-i18n="orders.sub">Your past pickups with skyWash Cleaning.</p>
         <div id="historyList"></div>
       </div>
 
       <div class="panel hidden" id="panelAccount">
-        <h2>Account</h2>
-        <p class="sub">Your profile and sign-in settings.</p>
+        <h2 data-i18n="acct.title">Account</h2>
+        <p class="sub" data-i18n="acct.sub">Your profile, appearance, and language.</p>
+
+        <div class="prefs-block">
+          <h3 data-i18n="prefs.appearance">Appearance</h3>
+          <p class="prefs-hint" data-i18n="prefs.appearanceHint">Choose light, dark, or follow your device.</p>
+          <div class="prefs-seg" id="themeSeg" role="group" aria-label="Appearance">
+            <button type="button" data-theme-option="light" data-i18n="prefs.light">Light</button>
+            <button type="button" data-theme-option="dark" data-i18n="prefs.dark">Dark</button>
+            <button type="button" data-theme-option="system" data-i18n="prefs.system">System</button>
+          </div>
+        </div>
+
+        <div class="prefs-block">
+          <h3 data-i18n="prefs.language">Language</h3>
+          <p class="prefs-hint" data-i18n="prefs.languageHint">App text updates instantly on this device.</p>
+          <label class="field-label" for="acctLanguage" data-i18n="prefs.language">Language</label>
+          <select id="acctLanguage" class="auth-input account-select" aria-label="Language">
+            <option value="en">English</option>
+            <option value="fr">Français</option>
+            <option value="yo">Yorùbá</option>
+            <option value="ha">Hausa</option>
+            <option value="ig">Igbo</option>
+          </select>
+        </div>
 
         <form id="accountForm" class="account-form">
-          <label class="field-label" for="acctName">Name</label>
+          <label class="field-label" for="acctName" data-i18n="acct.name">Name</label>
           <input type="text" id="acctName" class="auth-input" autocomplete="name" required>
 
-          <label class="field-label" for="acctPhone">Phone</label>
+          <label class="field-label" for="acctPhone" data-i18n="acct.phone">Phone</label>
           <input type="tel" id="acctPhone" class="auth-input" autocomplete="tel" required>
 
-          <label class="field-label" for="acctEmail">Email</label>
+          <label class="field-label" for="acctEmail" data-i18n="acct.email">Email</label>
           <input type="email" id="acctEmail" class="auth-input" autocomplete="email" disabled>
 
-          <label class="field-label" for="acctPayment">Default payment</label>
+          <label class="field-label" for="acctPayment" data-i18n="acct.payment">Default payment</label>
           <select id="acctPayment" class="auth-input account-select">
-            <option value="card">Debit / Credit Card</option>
-            <option value="transfer">Bank Transfer</option>
-            <option value="cash">Cash on pickup</option>
+            <option value="card" data-i18n="pay.card">Debit / Credit Card</option>
+            <option value="transfer" data-i18n="pay.transfer">Bank Transfer</option>
+            <option value="cash" data-i18n="pay.cash">Cash on pickup</option>
           </select>
 
           <p class="auth-error hidden" id="acctError"></p>
-          <p class="account-ok hidden" id="acctOk">Profile saved.</p>
-          <button type="submit" class="primary-btn" id="acctSaveBtn">Save changes</button>
+          <p class="account-ok hidden" id="acctOk" data-i18n="acct.saved">Profile saved.</p>
+          <button type="submit" class="primary-btn" id="acctSaveBtn" data-i18n="acct.save">Save changes</button>
         </form>
 
         <div class="account-actions">
-          <button type="button" class="account-reset-btn" id="acctResetAccessBtn">Reset access (new login code)</button>
-          <button type="button" class="account-logout-btn" id="acctLogoutBtn">Log out</button>
-          <button type="button" class="account-logout-all-btn" id="acctLogoutAllBtn">Log out everywhere</button>
+          <button type="button" class="account-reset-btn" id="acctResetAccessBtn" data-i18n="acct.reset">Reset access (new login code)</button>
+          <button type="button" class="account-logout-btn" id="acctLogoutBtn" data-i18n="acct.logout">Log out</button>
+          <button type="button" class="account-logout-all-btn" id="acctLogoutAllBtn" data-i18n="acct.logoutAll">Log out everywhere</button>
         </div>
       </div>
 
     </aside>
 
     <div class="map-wrap">
-      <div class="live-badge" id="liveBadge"><span class="dot"></span><span id="liveText">Live</span></div>
+      <div class="live-badge" id="liveBadge"><span class="dot"></span><span id="liveText" data-i18n="live.default">Live</span></div>
       <div id="map"></div>
     </div>
 
@@ -343,15 +381,15 @@
   <nav class="bottom-nav">
     <button class="nav-btn active" data-tab="book">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l2-4h14l2 4M3 7h18M3 7v13a1 1 0 0 0 1 1h16a1 1 0 0 0 1-1V7"/><circle cx="12" cy="14" r="3"/></svg>
-      Book
+      <span data-i18n="nav.book">Book</span>
     </button>
     <button class="nav-btn" data-tab="browse">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 6v16l7-4 8 4 7-4V2l-7 4-8-4-7 4z"/><path d="M8 2v16M16 6v16"/></svg>
-      Map
+      <span data-i18n="nav.map">Map</span>
     </button>
     <button class="nav-btn" data-tab="history">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v5h5"/><path d="M3.05 13A9 9 0 1 0 6 5.3L3 8"/><path d="M12 7v5l4 2"/></svg>
-      Orders
+      <span data-i18n="nav.orders">Orders</span>
     </button>
   </nav>
 </div>
@@ -362,7 +400,8 @@
     window.SKYWASH_API_BASE = 'https://sky-wash-production.up.railway.app';
   }
 </script>
-<script src="/js/register-sw.js?v=29"></script>
-<script src="/js/app.js?v=29"></script>
+<script src="/js/i18n.js?v=33"></script>
+<script src="/js/register-sw.js?v=33"></script>
+<script src="/js/app.js?v=33"></script>
 </body>
 </html>

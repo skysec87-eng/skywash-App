@@ -8,6 +8,14 @@ try {
 } catch (_) {}
 const API_BASE = window.SKYWASH_API_BASE || '';
 
+function t(key, vars){
+  return (window.SkywashI18n && typeof SkywashI18n.t === 'function')
+    ? SkywashI18n.t(key, vars)
+    : key;
+}
+
+if(window.SkywashI18n) SkywashI18n.applyTheme(SkywashI18n.getThemePref());
+
 const NEARBY_RADIUS_KM = 40;
 
 const STATUSES = [
@@ -186,6 +194,27 @@ function toggleAuthMenu(){
   }
 }
 
+function syncThemeControls(){
+  const resolved = document.documentElement.getAttribute('data-theme') || 'light';
+  const pref = (window.SkywashI18n && SkywashI18n.getThemePref()) || 'system';
+  const hdr = document.getElementById('headerThemeBtn');
+  if(hdr){
+    hdr.textContent = resolved === 'dark' ? '☀' : '☾';
+    hdr.title = resolved === 'dark' ? t('prefs.light') : t('prefs.dark');
+    hdr.setAttribute('aria-label', resolved === 'dark' ? t('prefs.light') : t('prefs.dark'));
+  }
+  document.querySelectorAll('[data-theme-option]').forEach((btn) => {
+    btn.classList.toggle('active', btn.getAttribute('data-theme-option') === pref);
+  });
+}
+
+function toggleHeaderTheme(){
+  if(!window.SkywashI18n) return;
+  const resolved = document.documentElement.getAttribute('data-theme') || 'light';
+  SkywashI18n.applyTheme(resolved === 'dark' ? 'light' : 'dark');
+  syncThemeControls();
+}
+
 function renderAuthChip(){
   const chip = document.getElementById('authChip');
   if(!chip) return;
@@ -208,6 +237,7 @@ function renderAuthChip(){
     dropdown.className = 'auth-dropdown hidden';
     dropdown.id = 'authDropdown';
     dropdown.setAttribute('role', 'menu');
+    const themePref = (window.SkywashI18n && SkywashI18n.getThemePref()) || 'system';
     dropdown.innerHTML = `
       <div class="auth-dropdown-head">
         <span class="auth-avatar-sm" aria-hidden="true">${initials}</span>
@@ -216,13 +246,28 @@ function renderAuthChip(){
           <div class="auth-dropdown-email">${email}</div>
         </div>
       </div>
-      <button type="button" class="auth-dropdown-item" role="menuitem" id="menuProfileBtn">Profile</button>
-      <button type="button" class="auth-dropdown-item" role="menuitem" id="menuResetBtn">Reset access</button>
-      <button type="button" class="auth-dropdown-item" role="menuitem" id="menuLogoutBtn">Log out</button>
-      <button type="button" class="auth-dropdown-item danger" role="menuitem" id="menuLogoutAllBtn">Log out everywhere</button>`;
+      <div class="auth-dropdown-theme">
+        <span class="auth-dropdown-theme-label">${t('prefs.appearance')}</span>
+        <div class="auth-theme-seg" role="group" aria-label="${t('prefs.appearance')}">
+          <button type="button" data-theme-option="light" class="${themePref==='light'?'active':''}" title="${t('prefs.light')}" aria-label="${t('prefs.light')}">☀</button>
+          <button type="button" data-theme-option="dark" class="${themePref==='dark'?'active':''}" title="${t('prefs.dark')}" aria-label="${t('prefs.dark')}">☾</button>
+          <button type="button" data-theme-option="system" class="${themePref==='system'?'active':''}" title="${t('prefs.system')}" aria-label="${t('prefs.system')}">◐</button>
+        </div>
+      </div>
+      <button type="button" class="auth-dropdown-item" role="menuitem" id="menuProfileBtn">${t('menu.profile')}</button>
+      <button type="button" class="auth-dropdown-item" role="menuitem" id="menuResetBtn">${t('menu.reset')}</button>
+      <button type="button" class="auth-dropdown-item" role="menuitem" id="menuLogoutBtn">${t('menu.logout')}</button>
+      <button type="button" class="auth-dropdown-item danger" role="menuitem" id="menuLogoutAllBtn">${t('menu.logoutAll')}</button>`;
     document.body.appendChild(dropdown);
 
     document.getElementById('authAvatarBtn').onclick = (e)=>{ e.stopPropagation(); toggleAuthMenu(); };
+    dropdown.querySelectorAll('[data-theme-option]').forEach((btn) => {
+      btn.onclick = (e) => {
+        e.stopPropagation();
+        if(window.SkywashI18n) SkywashI18n.applyTheme(btn.getAttribute('data-theme-option'));
+        syncThemeControls();
+      };
+    });
     document.getElementById('menuProfileBtn').onclick = ()=>{ closeAuthMenu(); activateTab('account'); };
     document.getElementById('menuResetBtn').onclick = ()=>{ closeAuthMenu(); startResetAccess(); };
     document.getElementById('menuLogoutBtn').onclick = ()=>{
@@ -237,6 +282,7 @@ function renderAuthChip(){
   } else {
     chip.innerHTML = '';
   }
+  syncThemeControls();
 }
 
 function startResetAccess(){
@@ -577,6 +623,60 @@ const PAYMENT_OPTIONS = {
   cash: 'Cash on pickup'
 };
 
+function paymentLabel(key){
+  if(key === 'card') return t('pay.card');
+  if(key === 'transfer') return t('pay.transfer');
+  if(key === 'cash') return t('pay.cash');
+  return PAYMENT_OPTIONS[key] || key;
+}
+
+function syncDynamicI18n(){
+  const confirmBtn = document.getElementById('confirmBtn');
+  if(confirmBtn){
+    if(matchedProvider && !confirmBtn.disabled){
+      confirmBtn.textContent = t('match.confirm');
+    } else {
+      confirmBtn.textContent = t('match.selectFirst');
+    }
+  }
+  const paySelect = document.getElementById('acctPayment');
+  if(paySelect){
+    Array.from(paySelect.options).forEach((opt) => {
+      opt.textContent = paymentLabel(opt.value);
+    });
+  }
+  renderAuthChip();
+  syncThemeControls();
+}
+
+function wirePrefsControls(){
+  const themeSeg = document.getElementById('themeSeg');
+  if(themeSeg){
+    themeSeg.querySelectorAll('[data-theme-option]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        if(window.SkywashI18n) SkywashI18n.applyTheme(btn.getAttribute('data-theme-option'));
+        syncThemeControls();
+      });
+    });
+  }
+  const langSelect = document.getElementById('acctLanguage');
+  if(langSelect){
+    langSelect.addEventListener('change', () => {
+      if(window.SkywashI18n) SkywashI18n.applyI18n(langSelect.value);
+      syncDynamicI18n();
+    });
+  }
+  const headerThemeBtn = document.getElementById('headerThemeBtn');
+  if(headerThemeBtn){
+    headerThemeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleHeaderTheme();
+    });
+  }
+  syncThemeControls();
+}
+wirePrefsControls();
+
 function activateTab(tabName){
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.tab===tabName));
   [panelBooking,panelBrowse,panelHistory,panelAccount].forEach(p=>p.classList.add('hidden'));
@@ -599,6 +699,11 @@ function fillAccountForm(){
   document.getElementById('acctPayment').value = PAYMENT_OPTIONS[payKey] ? payKey : 'card';
   document.getElementById('acctError').classList.add('hidden');
   document.getElementById('acctOk').classList.add('hidden');
+  if(window.SkywashI18n){
+    SkywashI18n.applyTheme(SkywashI18n.getThemePref());
+    const langSelect = document.getElementById('acctLanguage');
+    if(langSelect) langSelect.value = SkywashI18n.getLocale();
+  }
 }
 
 document.getElementById('accountForm').addEventListener('submit', async (e)=>{
@@ -616,7 +721,7 @@ document.getElementById('accountForm').addEventListener('submit', async (e)=>{
       body: JSON.stringify({
         name: document.getElementById('acctName').value.trim(),
         phone: document.getElementById('acctPhone').value.trim(),
-        payment_preference: { key: payKey, name: PAYMENT_OPTIONS[payKey] || payKey }
+        payment_preference: { key: payKey, name: paymentLabel(payKey) }
       })
     });
     currentUser = res.user;
@@ -1130,7 +1235,7 @@ function selectOffer(p, rowEl){
   document.getElementById('matchEta').textContent = etaForOffer(p);
   const confirmBtn = document.getElementById('confirmBtn');
   confirmBtn.disabled = false;
-  confirmBtn.textContent = 'Confirm pickup';
+  confirmBtn.textContent = t('match.confirm');
 }
 
 document.getElementById('cancelMatchBtn').onclick = ()=> resetToForm();
@@ -1521,6 +1626,10 @@ function addChatMsg(text, who){
 
 async function boot(){
   showStep('stepForm');
+  if(window.SkywashI18n){
+    await SkywashI18n.initPrefs();
+    syncDynamicI18n();
+  }
   initGoogleSignIn();
   try{
     await api('/api/health');

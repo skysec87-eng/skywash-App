@@ -1,10 +1,11 @@
-const CACHE_NAME = 'skywash-v29';
+const CACHE_NAME = 'skywash-v33';
 const APP_SHELL = [
   '/',
   '/index.html',
   '/manifest.json',
   '/css/styles.css',
   '/js/app.js',
+  '/js/i18n.js',
   '/js/register-sw.js',
   '/icons/icon-192.png',
   '/icons/icon-512.png'
