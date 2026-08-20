@@ -41,9 +41,11 @@ public class CatalogController {
       @RequestParam double lat,
       @RequestParam double lng,
       @RequestParam(required = false) Double radius_km,
-      @RequestParam(required = false) Integer limit
+      @RequestParam(required = false) Integer limit,
+      @RequestParam(required = false) String service,
+      @RequestParam(required = false) Integer qty
   ) {
-    return catalogService.nearby(lat, lng, radius_km, limit);
+    return catalogService.nearby(lat, lng, radius_km, limit, service, qty);
   }
 
   @GetMapping("/cities")

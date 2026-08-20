@@ -19,6 +19,7 @@ import com.skywash.api.entity.PartnerEntity;
 import com.skywash.api.model.Order;
 import com.skywash.api.repo.OrderRepository;
 import com.skywash.api.util.GeoUtils;
+import com.skywash.api.util.TripEtaCalculator;
 
 @Service
 public class OrderService {
@@ -137,6 +138,7 @@ public class OrderService {
   public Map<String, Object> getDetail(String id) {
     OrderEntity o = getEntity(id);
     PartnerEntity partner = catalogService.findById(o.getPartnerId()).orElse(null);
+    TripEtaCalculator.Remaining eta = computeEta(o, partner);
     Map<String, Object> body = new LinkedHashMap<>();
     body.put("id", o.getId());
     body.put("status", o.getStatus());
@@ -149,7 +151,11 @@ public class OrderService {
     if (o.getCourierLat() != null) {
       body.put("partner_location", Map.of("lat", o.getCourierLat(), "lng", o.getCourierLng()));
     }
-    body.put("eta_label", etaLabel(o));
+    body.put("eta_label", eta.label());
+    body.put("eta_minutes", eta.remainingMin());
+    body.put("eta_phase", eta.phase());
+    body.put("eta_breakdown", eta.plan().toMap());
+    body.put("awaiting_delivery_confirmation", "delivering".equals(o.getStatus()));
     body.put("timeline", o.getTimeline().stream()
         .map(t -> Map.of("key", t.getKey(), "label", t.getLabel(), "at", t.getAt()))
         .toList());
@@ -240,6 +246,9 @@ public class OrderService {
       throw new ApiException(HttpStatus.BAD_REQUEST, "rating must be 1–5");
     }
     OrderEntity o = getEntity(id);
+    if (!"delivered".equals(o.getStatus()) && !"rated".equals(o.getStatus())) {
+      throw new ApiException(HttpStatus.BAD_REQUEST, "Confirm delivery before rating");
+    }
     o.setRating(rating);
     o.setStatus("rated");
     o.setStatusLabel("Rated");
@@ -248,10 +257,36 @@ public class OrderService {
     return toModel(orderRepository.save(o));
   }
 
+  /**
+   * Customer confirms laundry was received in good order.
+   * Delivery is never auto-completed — only this (or an explicit ops action) marks delivered.
+   */
+  @Transactional
+  public Order confirmDelivery(String id) {
+    OrderEntity o = getEntity(id);
+    String status = o.getStatus() == null ? "" : o.getStatus();
+    if ("delivered".equals(status) || "rated".equals(status)) {
+      return toModel(o);
+    }
+    if (!"delivering".equals(status)) {
+      throw new ApiException(
+          HttpStatus.BAD_REQUEST,
+          "Delivery can only be confirmed while out for delivery (current: " + status + ")"
+      );
+    }
+    Instant now = Instant.now();
+    applyNextStatus(o, "delivered", labelFor("delivered"), now);
+    return toModel(orderRepository.save(o));
+  }
+
   @Transactional
   public Order advanceStatus(String id, String status) {
     OrderEntity o = getEntity(id);
     String key = status.toLowerCase(Locale.ROOT);
+    // Customers must confirm receipt — block silent auto/PATCH into delivered.
+    if ("delivered".equals(key)) {
+      return confirmDelivery(id);
+    }
     String label = labelFor(key);
     if (label == null && !"cancelled".equals(key)) {
       throw new ApiException(HttpStatus.BAD_REQUEST, "Unknown status: " + status);
@@ -284,15 +319,29 @@ public class OrderService {
         continue;
       }
 
-      var current = SeedData.STATUSES.get(idx);
+      TripEtaCalculator.Plan plan = buildPlan(o, catalogService.findById(o.getPartnerId()).orElse(null));
       Instant entered = lastLifecycleTimestamp(o);
       if (entered == null) continue;
-      if (now.toEpochMilli() - entered.toEpochMilli() < current.durationMs()) {
+      long needMs = TripEtaCalculator.phaseDurationMs(o.getStatus(), plan);
+      if (now.toEpochMilli() - entered.toEpochMilli() < needMs) {
         orderRepository.save(o);
         continue;
       }
 
       var next = SeedData.STATUSES.get(idx + 1);
+      // Never auto-complete delivery — customer must confirm receipt on the client.
+      if ("delivered".equals(next.key())) {
+        o.setCourierLat(o.getPickupLat());
+        o.setCourierLng(o.getPickupLng());
+        if (!"Arrived — confirm receipt".equals(o.getStatusLabel())) {
+          o.setStatusLabel("Arrived — confirm receipt");
+          o.setUpdatedAt(now);
+          orderMessageService.announceStatus(o, "awaiting_confirmation");
+        }
+        orderRepository.save(o);
+        continue;
+      }
+
       applyNextStatus(o, next.key(), next.label(), now);
       orderRepository.save(o);
     }
@@ -355,37 +404,41 @@ public class OrderService {
     return o.getCreatedAt();
   }
 
-  private String etaLabel(OrderEntity o) {
-    if (o.getScheduledAt() != null && o.getScheduledAt().isAfter(Instant.now())) {
-      return "Scheduled";
-    }
-    PartnerEntity partner = catalogService.findById(o.getPartnerId()).orElse(null);
+  private TripEtaCalculator.Plan buildPlan(OrderEntity o, PartnerEntity partner) {
     double distKm = 2.0;
     if (partner != null) {
       distKm = GeoUtils.haversineKm(partner.getLat(), partner.getLng(), o.getPickupLat(), o.getPickupLng());
     }
-    int base = GeoUtils.etaMinutes(distKm);
-    return switch (o.getStatus()) {
-      case "confirmed" -> "~" + Math.min(25, Math.max(base, 10)) + " min";
-      case "enroute" -> {
-        if (o.getCourierLat() != null) {
-          double left = GeoUtils.haversineKm(o.getCourierLat(), o.getCourierLng(), o.getPickupLat(), o.getPickupLng());
-          yield "~" + Math.min(20, Math.max(3, (int) Math.round(left * 4 + 2))) + " min";
+    List<TripEtaCalculator.ServiceQty> services = o.getServices().stream()
+        .map(s -> new TripEtaCalculator.ServiceQty(s.getType(), s.getQty()))
+        .toList();
+    return TripEtaCalculator.plan(distKm, services);
+  }
+
+  private TripEtaCalculator.Remaining computeEta(OrderEntity o, PartnerEntity partner) {
+    TripEtaCalculator.Plan plan = buildPlan(o, partner);
+    if (o.getScheduledAt() != null && o.getScheduledAt().isAfter(Instant.now())) {
+      return TripEtaCalculator.scheduled(plan);
+    }
+    Integer liveTravel = null;
+    String status = o.getStatus() == null ? "" : o.getStatus();
+    if (o.getCourierLat() != null && o.getCourierLng() != null) {
+      if ("enroute".equals(status) || "pickedup".equals(status)) {
+        double left = GeoUtils.haversineKm(
+            o.getCourierLat(), o.getCourierLng(), o.getPickupLat(), o.getPickupLng());
+        if ("pickedup".equals(status) && partner != null) {
+          left = GeoUtils.haversineKm(
+              o.getCourierLat(), o.getCourierLng(), partner.getLat(), partner.getLng());
         }
-        yield "~" + Math.min(15, Math.max(5, base / 2)) + " min";
+        liveTravel = TripEtaCalculator.travelMinutes(left, false);
+      } else if ("delivering".equals(status)) {
+        double left = GeoUtils.haversineKm(
+            o.getCourierLat(), o.getCourierLng(), o.getPickupLat(), o.getPickupLng());
+        liveTravel = TripEtaCalculator.travelMinutes(left, false);
       }
-      case "pickedup" -> "At pickup";
-      case "washing" -> "~" + Math.min(30, Math.max(8, base)) + " min";
-      case "delivering" -> {
-        if (o.getCourierLat() != null) {
-          double left = GeoUtils.haversineKm(o.getCourierLat(), o.getCourierLng(), o.getPickupLat(), o.getPickupLng());
-          yield "~" + Math.min(20, Math.max(3, (int) Math.round(left * 4 + 2))) + " min";
-        }
-        yield "~" + Math.min(15, Math.max(5, base / 2)) + " min";
-      }
-      case "delivered", "rated" -> "Arrived";
-      default -> "—";
-    };
+    }
+    return TripEtaCalculator.remaining(
+        status, plan, lastLifecycleTimestamp(o), Instant.now(), liveTravel);
   }
 
   private Order toModel(OrderEntity o) {

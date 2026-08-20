@@ -281,8 +281,12 @@ class ApiIntegrationTest {
 
     mockMvc.perform(patch("/api/orders/" + orderId + "/status")
             .contentType(MediaType.APPLICATION_JSON)
-            .content("{\"status\":\"delivered\"}"))
+            .content("{\"status\":\"delivering\"}"))
         .andExpect(status().isOk());
+
+    mockMvc.perform(post("/api/orders/" + orderId + "/delivery-confirmations"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.status").value("delivered"));
 
     mockMvc.perform(post("/api/orders/" + orderId + "/ratings")
             .contentType(MediaType.APPLICATION_JSON)

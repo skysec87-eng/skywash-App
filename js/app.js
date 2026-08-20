@@ -1141,7 +1141,12 @@ function partnerInitials(name){
 }
 function etaForOffer(offer){
   if(isScheduled) return formatScheduledPickup();
-  return `${offer.eta_minutes || 8} min`;
+  const pickup = offer.eta_minutes || 8;
+  const total = offer.total_eta_minutes;
+  if(total && total > pickup){
+    return `${pickup}m pickup · ~${total}m total`;
+  }
+  return `${pickup} min`;
 }
 
 requestBtn.onclick = async ()=>{
@@ -1152,7 +1157,12 @@ requestBtn.onclick = async ()=>{
   document.getElementById('liveText').textContent='Finding partners…';
 
   try{
-    const data = await api(`/api/partners/nearby?lat=${userLoc.lat}&lng=${userLoc.lng}&radius_km=${NEARBY_RADIUS_KM}&limit=8`);
+    const primary = (selectedServices && selectedServices[0]) || { type: 'wash' };
+    const qty = typeof weight === 'number' && weight > 0 ? weight : 2;
+    const data = await api(
+      `/api/partners/nearby?lat=${userLoc.lat}&lng=${userLoc.lng}&radius_km=${NEARBY_RADIUS_KM}&limit=8`
+      + `&service=${encodeURIComponent(primary.type)}&qty=${qty}`
+    );
     nearbyOffers = (data.offers || []).map(o => ({
       id: o.partner.id,
       name: o.partner.name,
@@ -1164,7 +1174,9 @@ requestBtn.onclick = async ()=>{
       rating: o.partner.rating,
       phone: o.partner.phone,
       dist: o.distance_km,
-      eta_minutes: o.eta_minutes
+      eta_minutes: o.eta_minutes,
+      total_eta_minutes: o.total_eta_minutes,
+      eta_breakdown: o.eta_breakdown
     }));
     matchedProvider = null;
     showOffers();
@@ -1492,6 +1504,8 @@ function applyOrderDetail(detail){
   updateStepperUI(detail.status, detail.timeline);
   document.getElementById('tripEta').textContent = detail.eta_label || '—';
   document.getElementById('tripStatusBig').textContent = detail.status_label || detail.status;
+  renderEtaBreakdown(detail);
+  updateConfirmDeliveryUi(detail);
 
   const partner = detail.partner || matchedProvider || {};
   if(partner.name) document.getElementById('tripName').textContent = partner.name;
@@ -1513,6 +1527,56 @@ function applyOrderDetail(detail){
     if(riderMarker){ map.removeLayer(riderMarker); riderMarker=null; }
     riderMarker = L.marker([userLoc.lat, userLoc.lng], {icon:ICON_RIDER}).addTo(map);
   }
+}
+
+function renderEtaBreakdown(detail){
+  const b = (detail && detail.eta_breakdown) || {};
+  const pickupEl = document.getElementById('etaPickupMin');
+  const washEl = document.getElementById('etaWashMin');
+  const deliveryEl = document.getElementById('etaDeliveryMin');
+  if(!pickupEl || !washEl || !deliveryEl) return;
+  const pickup = b.pickup_min != null ? b.pickup_min : ((b.pickup_travel_min || 0) + (b.pickup_handling_min || 0));
+  const wash = b.wash_min != null ? b.wash_min : '—';
+  const delivery = b.delivery_min != null ? b.delivery_min : ((b.delivery_travel_min || 0) + (b.dispatch_handling_min || 0));
+  pickupEl.textContent = pickup === '—' ? '—' : (pickup + 'm');
+  washEl.textContent = wash === '—' ? '—' : (wash + 'm');
+  deliveryEl.textContent = delivery === '—' ? '—' : (delivery + 'm');
+  const phase = detail.eta_phase || '';
+  document.querySelectorAll('#etaBreakdown [data-phase]').forEach(el => {
+    el.classList.toggle('active', el.getAttribute('data-phase') === phase);
+  });
+}
+
+function updateConfirmDeliveryUi(detail){
+  const btn = document.getElementById('confirmDeliveryBtn');
+  const hint = document.getElementById('confirmDeliveryHint');
+  if(!btn || !hint) return;
+  const show = !!(detail && detail.status === 'delivering');
+  btn.classList.toggle('hidden', !show);
+  hint.classList.toggle('hidden', !show);
+  if(show && detail.status_label && /confirm/i.test(String(detail.status_label))){
+    document.getElementById('tripEta').textContent = 'Confirm receipt';
+  }
+}
+
+const confirmDeliveryBtn = document.getElementById('confirmDeliveryBtn');
+if(confirmDeliveryBtn){
+  confirmDeliveryBtn.onclick = async ()=>{
+    if(!currentOrderId) return;
+    if(!confirm('Confirm you received your laundry and there are no issues?')) return;
+    confirmDeliveryBtn.disabled = true;
+    try{
+      await api('/api/orders/' + currentOrderId + '/delivery-confirmations', {
+        method: 'POST',
+        body: '{}'
+      });
+      const detail = await api('/api/orders/' + currentOrderId);
+      syncTripFromOrder(detail);
+    }catch(err){
+      alert('Could not confirm delivery: ' + err.message);
+      confirmDeliveryBtn.disabled = false;
+    }
+  };
 }
 
 function animateRiderToward(fromPoint, partnerPoint, toPoint){

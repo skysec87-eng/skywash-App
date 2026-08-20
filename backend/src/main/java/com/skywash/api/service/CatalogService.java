@@ -20,6 +20,7 @@ import com.skywash.api.model.ServiceType;
 import com.skywash.api.repo.PartnerRepository;
 import com.skywash.api.repo.ServiceTypeRepository;
 import com.skywash.api.util.GeoUtils;
+import com.skywash.api.util.TripEtaCalculator;
 
 @Service
 public class CatalogService {
@@ -73,8 +74,20 @@ public class CatalogService {
   }
 
   public Map<String, Object> nearby(double lat, double lng, Double radiusKm, Integer limit) {
+    return nearby(lat, lng, radiusKm, limit, null, 2);
+  }
+
+  /**
+   * @param serviceType optional primary service (wash|dry|iron|express); default wash
+   * @param qty bag size / item count used for wash timing
+   */
+  public Map<String, Object> nearby(
+      double lat, double lng, Double radiusKm, Integer limit, String serviceType, Integer qty
+  ) {
     double radius = radiusKm == null ? SeedData.NEARBY_RADIUS_KM : radiusKm;
     int lim = limit == null ? SeedData.NEARBY_LIMIT : limit;
+    String svc = serviceType == null || serviceType.isBlank() ? "wash" : serviceType.trim();
+    int q = qty == null || qty < 1 ? 2 : qty;
 
     List<Map<String, Object>> offers = partnerRepository.findByActiveTrue().stream()
         .map(p -> Map.entry(p, GeoUtils.haversineKm(lat, lng, p.getLat(), p.getLng())))
@@ -84,11 +97,14 @@ public class CatalogService {
         .map(e -> {
           PartnerEntity p = e.getKey();
           double dist = e.getValue();
-          return Map.<String, Object>of(
-              "partner", toPartnerMap(p, null, null),
-              "distance_km", round1(dist),
-              "eta_minutes", GeoUtils.etaMinutes(dist)
-          );
+          var plan = TripEtaCalculator.plan(dist, svc, q);
+          Map<String, Object> offer = new LinkedHashMap<>();
+          offer.put("partner", toPartnerMap(p, null, null));
+          offer.put("distance_km", round1(dist));
+          offer.put("eta_minutes", plan.pickupTravelMin()); // time to pickup
+          offer.put("total_eta_minutes", plan.totalMin());
+          offer.put("eta_breakdown", plan.toMap());
+          return offer;
         })
         .collect(Collectors.toList());
 

@@ -25,15 +25,9 @@ class GeoUtilsTest {
   }
 
   @Test
-  void etaMinutesHasFloorOfEight() {
-    assertEquals(8, GeoUtils.etaMinutes(0.1));
-    assertEquals(8, GeoUtils.etaMinutes(0));
-  }
-
-  @Test
-  void etaMinutesUsesFrontendFormula() {
-    // max(8, round(dist*4 + 6))
-    assertEquals(14, GeoUtils.etaMinutes(2.0)); // 2*4+6 = 14
-    assertEquals(26, GeoUtils.etaMinutes(5.0)); // 5*4+6 = 26
+  void etaMinutesUsesRealisticPlannedTravelFloor() {
+    assertEquals(25, GeoUtils.etaMinutes(0));
+    assertEquals(25, GeoUtils.etaMinutes(1.0));
+    assertEquals(45, GeoUtils.etaMinutes(5.0)); // 5*6+15
   }
 }

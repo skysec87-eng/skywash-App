@@ -79,7 +79,8 @@ public class OrderMessageService {
       case "pickedup" -> "Bag collected. Heading to the laundromat now.";
       case "washing" -> "Your laundry is being washed and folded. I'll ping you when it's out for delivery.";
       case "delivering" -> "Fresh laundry is on the way back to you.";
-      case "delivered" -> "Delivered — enjoy the fresh clothes! Rate your experience when you're ready.";
+      case "awaiting_confirmation" -> "Your laundry has arrived. Tap Confirm receipt when you’ve received it without issues.";
+      case "delivered" -> "Delivery confirmed — enjoy the fresh clothes! Rate your experience when you're ready.";
       default -> null;
     };
   }

@@ -54,7 +54,7 @@ class CatalogControllerTest {
 
   @Test
   void nearby() throws Exception {
-    when(catalogService.nearby(anyDouble(), anyDouble(), any(), any()))
+    when(catalogService.nearby(anyDouble(), anyDouble(), any(), any(), any(), any()))
         .thenReturn(Map.of(
             "pickup", Map.of("lat", 6.45, "lng", 3.47),
             "radius_km", 40.0,

@@ -14,8 +14,8 @@ public final class GeoUtils {
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   }
 
-  /** ETA minutes formula from frontend: max(8, round(dist*4 + 6)). */
+  /** One-way travel ETA (pickup). Prefer {@link TripEtaCalculator} for full trips. */
   public static int etaMinutes(double distanceKm) {
-    return Math.max(8, (int) Math.round(distanceKm * 4 + 6));
+    return TripEtaCalculator.travelMinutes(distanceKm);
   }
 }

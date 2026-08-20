@@ -68,6 +68,17 @@ public class OrderController {
     return Map.of("id", o.getId(), "status", o.getStatus());
   }
 
+  @PostMapping("/{id}/delivery-confirmations")
+  public Map<String, Object> confirmDelivery(@PathVariable String id) {
+    Order o = orderService.confirmDelivery(id);
+    return Map.of(
+        "id", o.getId(),
+        "status", o.getStatus(),
+        "status_label", o.getStatusLabel(),
+        "message", "Delivery confirmed by customer"
+    );
+  }
+
   @PostMapping("/{id}/ratings")
   public Map<String, Object> rate(@PathVariable String id, @RequestBody Map<String, Object> body) {
     int rating = body.get("rating") instanceof Number n ? n.intValue() : Integer.parseInt(String.valueOf(body.get("rating")));
