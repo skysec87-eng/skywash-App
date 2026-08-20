@@ -29,7 +29,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
-<link rel="stylesheet" href="/css/styles.css?v=33">
+<link rel="stylesheet" href="/css/styles.css?v=34">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body>
@@ -266,11 +266,16 @@
           <div class="chat-panel" id="chatPanel">
             <div class="chat-log" id="chatLog"></div>
             <div class="chat-quick" id="chatQuick">
-              <button data-msg="Please ring the bell when you arrive">Ring the bell</button>
-              <button data-msg="I'll leave the bag with the security guard">Leaving with security</button>
-              <button data-msg="How much longer will you be?">How much longer?</button>
-              <button data-msg="Please handle with care, some delicates in there">Handle with care</button>
+              <button type="button" data-msg="Please ring the bell when you arrive">Ring the bell</button>
+              <button type="button" data-msg="I'll leave the bag with the security guard">Leaving with security</button>
+              <button type="button" data-msg="How much longer will you be?">How much longer?</button>
+              <button type="button" data-msg="Please handle with care, some delicates in there">Handle with care</button>
+              <button type="button" data-msg="I need to speak with support" data-support="1" data-i18n="trip.contactSupport">Contact support</button>
             </div>
+            <a class="chat-support-link" id="chatSupportLink" href="mailto:isaac.arinze.dev@gmail.com?subject=skyWash%20support">
+              <span data-i18n="trip.supportEmail">Email support</span>
+              <span class="chat-support-addr">isaac.arinze.dev@gmail.com</span>
+            </a>
           </div>
 
           <button class="ghost-btn" id="cancelTripBtn" data-i18n="trip.cancel">Cancel order</button>
@@ -400,8 +405,8 @@
     window.SKYWASH_API_BASE = 'https://sky-wash-production.up.railway.app';
   }
 </script>
-<script src="/js/i18n.js?v=33"></script>
-<script src="/js/register-sw.js?v=33"></script>
-<script src="/js/app.js?v=33"></script>
+<script src="/js/i18n.js?v=34"></script>
+<script src="/js/register-sw.js?v=34"></script>
+<script src="/js/app.js?v=34"></script>
 </body>
 </html>

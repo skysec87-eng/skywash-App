@@ -21,10 +21,10 @@ import com.skywash.api.model.Order;
 public class OrderMessageService {
 
   private final ConcurrentHashMap<String, List<Map<String, Object>>> threads = new ConcurrentHashMap<>();
-  private final GeminiChatService geminiChatService;
+  private final LlamaChatService llamaChatService;
 
-  public OrderMessageService(GeminiChatService geminiChatService) {
-    this.geminiChatService = geminiChatService;
+  public OrderMessageService(LlamaChatService llamaChatService) {
+    this.llamaChatService = llamaChatService;
   }
 
   public List<Map<String, Object>> list(String orderId) {
@@ -34,7 +34,7 @@ public class OrderMessageService {
   public List<Map<String, Object>> sendCustomerMessage(Order order, String text) {
     List<Map<String, Object>> thread = threadFor(order.getId());
     thread.add(message("customer", text));
-    String reply = geminiChatService.replyAsAssist(order, text, thread);
+    String reply = llamaChatService.replyAsAssist(order, text, thread);
     thread.add(message("assist", reply));
     return List.copyOf(thread);
   }
@@ -54,7 +54,8 @@ public class OrderMessageService {
     threadFor(order.getId()).add(message(
         "system",
         "You're booked with " + safe(order.getProviderName())
-            + ". I'll keep you updated as your pickup progresses — ask me anything about timing or access."
+            + ". I'll keep you updated as your pickup progresses — ask me anything about timing or access. "
+            + "Need a human? Email isaac.arinze.dev@gmail.com with this order ID."
     ));
   }
 

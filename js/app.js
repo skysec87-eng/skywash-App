@@ -1371,6 +1371,7 @@ async function startTrip(){
     try{
       const msgs = await api('/api/orders/' + currentOrderId + '/messages');
       renderChatMessages(msgs.messages || []);
+      refreshSupportLink();
       document.getElementById('chatPanel').classList.add('show');
     }catch(_){}
   }catch(e){
@@ -1431,6 +1432,7 @@ async function resumeTripFromOrder(orderId, opts = {}){
     if(data.order) syncTripFromOrder(data.order);
   }catch(_){}
   if(opts.openChat !== false){
+    refreshSupportLink();
     document.getElementById('chatPanel').classList.add('show');
   }
   if(detail.status === 'delivered'){
@@ -1595,9 +1597,26 @@ async function refreshChatQuiet(){
   }catch(_){}
 }
 
+const SUPPORT_EMAIL = 'isaac.arinze.dev@gmail.com';
+
+function supportMailtoHref(orderId){
+  const id = orderId || '';
+  const subject = encodeURIComponent('skyWash support' + (id ? ' — order ' + id : ''));
+  const body = encodeURIComponent(
+    'Hi skyWash support,\n\nOrder ID: ' + id + '\nIssue:\n\n'
+  );
+  return 'mailto:' + SUPPORT_EMAIL + '?subject=' + subject + '&body=' + body;
+}
+
+function refreshSupportLink(){
+  const link = document.getElementById('chatSupportLink');
+  if(link) link.href = supportMailtoHref(currentOrderId);
+}
+
 chatToggleBtn.onclick= async ()=>{
   chatPanel.classList.toggle('show');
   if(chatPanel.classList.contains('show') && currentOrderId){
+    refreshSupportLink();
     await refreshChatQuiet();
   }
 };
@@ -1605,6 +1624,7 @@ document.getElementById('chatQuick').addEventListener('click', async (e)=>{
   const btn = e.target.closest('button');
   if(!btn || !currentOrderId) return;
   try{
+    refreshSupportLink();
     const data = await api('/api/orders/' + currentOrderId + '/messages', {
       method:'POST',
       body: JSON.stringify({ text: btn.dataset.msg, sender: 'customer' })
@@ -1612,6 +1632,10 @@ document.getElementById('chatQuick').addEventListener('click', async (e)=>{
     renderChatMessages(data.messages || []);
     if(data.order) syncTripFromOrder(data.order);
     chatPanel.classList.add('show');
+    if(btn.dataset.support){
+      // Open mail client so the user can reach a human immediately
+      window.location.href = supportMailtoHref(currentOrderId);
+    }
   }catch(err){
     alert('Chat failed: ' + err.message);
   }

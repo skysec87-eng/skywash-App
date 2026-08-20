@@ -385,12 +385,22 @@
     background:transparent; color:var(--ink-soft); font-size:11.5px;
     border:1px dashed var(--line); border-radius:999px; padding:6px 12px;
   }
-  .chat-quick{ display:flex; flex-wrap:wrap; gap:6px; padding:0 12px 12px; }
+  .chat-quick{ display:flex; flex-wrap:wrap; gap:6px; padding:0 12px 8px; }
   .chat-quick button{
     background:var(--foam); border:1.5px solid var(--line); border-radius:999px; padding:6px 11px; font-size:11.5px;
     font-weight:600; color:var(--lagoon-800); cursor:pointer;
   }
   .chat-quick button:hover{ border-color:var(--sun-500); }
+  .chat-quick button[data-support]{
+    border-color:var(--lagoon-700); color:var(--lagoon-900); background:var(--lagoon-100);
+  }
+  .chat-support-link{
+    display:flex; flex-direction:column; gap:2px; margin:0 12px 12px; padding:10px 12px;
+    border-radius:12px; border:1.5px dashed var(--line); text-decoration:none;
+    color:var(--lagoon-900); font-size:12px; font-weight:600; background:var(--foam);
+  }
+  .chat-support-link:hover{ border-color:var(--lagoon-700); }
+  .chat-support-addr{ font-size:11px; font-weight:500; color:var(--ink-soft); word-break:break-all; }
 
   /* ---- Order history ---- */
   .history-card{

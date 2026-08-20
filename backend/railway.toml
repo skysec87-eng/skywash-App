@@ -1,10 +1,10 @@
 # Railway service config for the Spring Boot API.
 # In Railway: set Root Directory = backend (or deploy this folder as the service root).
 [build]
-builder = "NIXPACKS"
-buildCommand = "mvn -DskipTests package"
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "java -jar target/skywash-api-0.1.0.jar"
+startCommand = "java -jar app.jar"
 healthcheckPath = "/api/health"
 restartPolicyType = "ON_FAILURE"
