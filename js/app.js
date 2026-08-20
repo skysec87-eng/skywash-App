@@ -912,7 +912,7 @@ function geoLooksForcedToNigeria(query, geo) {
   return !!(otherPlace && (geo.demo || nigeriaLabel || lagosLng));
 }
 
-async function nominatimGeocode(address) {
+async function nominatimOnce(address) {
   const url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=' + encodeURIComponent(address);
   const res = await fetch(url, { headers: { Accept: 'application/json' } });
   if (!res.ok) return null;
@@ -925,6 +925,23 @@ async function nominatimGeocode(address) {
     demo: false,
     provider: 'nominatim'
   };
+}
+
+async function nominatimGeocode(address) {
+  const parts = String(address).split(',').map(s => s.trim()).filter(Boolean);
+  const queries = [address];
+  if (parts.length > 2) queries.push(parts.slice(-3).join(', '));
+  if (parts.length > 1) queries.push(parts.slice(-2).join(', '));
+  if (/\bcotonou\b/i.test(address)) queries.push('Cotonou, Benin');
+  const seen = new Set();
+  for (const q of queries) {
+    const key = q.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const hit = await nominatimOnce(q);
+    if (hit) return hit;
+  }
+  return null;
 }
 
 async function geocodePickup(typed) {
