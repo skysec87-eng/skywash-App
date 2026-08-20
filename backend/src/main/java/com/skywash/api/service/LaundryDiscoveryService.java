@@ -36,7 +36,6 @@ public class LaundryDiscoveryService {
   private static final Logger log = LoggerFactory.getLogger(LaundryDiscoveryService.class);
   private static final String[] OVERPASS_URLS = {
       "https://overpass-api.de/api/interpreter",
-      "https://lz4.overpass-api.de/api/interpreter",
       "https://overpass.kumi.systems/api/interpreter"
   };
   private static final String PLACES_NEARBY = "https://maps.googleapis.com/maps/api/place/nearbysearch/json";
@@ -84,14 +83,15 @@ public class LaundryDiscoveryService {
     if (!enabled || partnerRepository == null) return MAX_LOCAL_KM;
     int need = Math.max(3, want);
     int found = 0;
+    if (StringUtils.hasText(googleMapsApiKey)) {
+      found += upsertAll(fetchGooglePlaces(lat, lng, MAX_LOCAL_KM));
+      if (found >= need) return MAX_LOCAL_KM;
+    }
     double usedKm = RING_KM[0];
     for (double km : RING_KM) {
       usedKm = km;
       found += upsertAll(fetchOsmRing(lat, lng, km, found < need));
       if (found >= need) return km;
-    }
-    if (StringUtils.hasText(googleMapsApiKey)) {
-      found += upsertAll(fetchGooglePlaces(lat, lng, MAX_LOCAL_KM));
     }
     return usedKm;
   }
@@ -165,7 +165,7 @@ public class LaundryDiscoveryService {
     for (String url : OVERPASS_URLS) {
       try {
         HttpRequest request = HttpRequest.newBuilder(URI.create(url))
-            .timeout(Duration.ofSeconds(20))
+            .timeout(Duration.ofSeconds(8))
             .header("User-Agent", "skyWash/1.0 (https://sudsnear-deploy.vercel.app)")
             .header("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
             .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8))
