@@ -1235,7 +1235,7 @@ requestBtn.onclick = async ()=>{
     const primary = (selectedServices && selectedServices[0]) || { type: 'wash' };
     const qty = typeof weight === 'number' && weight > 0 ? weight : 2;
     const data = await api(
-      `/api/partners/nearby?lat=${userLoc.lat}&lng=${userLoc.lng}&radius_km=20000&limit=8`
+      `/api/partners/nearby?lat=${userLoc.lat}&lng=${userLoc.lng}&limit=8`
       + `&service=${encodeURIComponent(primary.type)}&qty=${qty}`
     );
     nearbyOffers = (data.offers || []).map(o => ({
@@ -1274,7 +1274,7 @@ function showOffers(){
   Object.values(storeMarkers).forEach(m => m.setIcon(ICON_STORE));
 
   if(!nearbyOffers.length){
-    list.innerHTML = `<div class="history-empty">No laundry partners in the catalog yet. Try again shortly, or browse the map.</div>`;
+    list.innerHTML = `<div class="history-empty">No laundry found near this pickup. Try a street in a denser neighborhood — we only show shops around you, not another city.</div>`;
     showStep('stepMatched');
     return;
   }

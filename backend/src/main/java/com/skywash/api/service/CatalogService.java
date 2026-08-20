@@ -1,6 +1,5 @@
 package com.skywash.api.service;
 
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -9,6 +8,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
@@ -27,10 +27,22 @@ public class CatalogService {
 
   private final PartnerRepository partnerRepository;
   private final ServiceTypeRepository serviceTypeRepository;
+  private final LaundryDiscoveryService laundryDiscoveryService;
 
-  public CatalogService(PartnerRepository partnerRepository, ServiceTypeRepository serviceTypeRepository) {
+  @Autowired
+  public CatalogService(
+      PartnerRepository partnerRepository,
+      ServiceTypeRepository serviceTypeRepository,
+      LaundryDiscoveryService laundryDiscoveryService
+  ) {
     this.partnerRepository = partnerRepository;
     this.serviceTypeRepository = serviceTypeRepository;
+    this.laundryDiscoveryService = laundryDiscoveryService;
+  }
+
+  /** Unit tests without live OSM discovery. */
+  CatalogService(PartnerRepository partnerRepository, ServiceTypeRepository serviceTypeRepository) {
+    this(partnerRepository, serviceTypeRepository, new LaundryDiscoveryService());
   }
 
   public Map<String, Object> listServices() {
@@ -78,9 +90,8 @@ public class CatalogService {
   }
 
   /**
-   * Rank active partners by distance from pickup.
-   * No default 40 km cap — far pickups still get the nearest shops.
-   * An explicit radiusKm is a local preference; if nothing is inside it, we expand.
+   * Offers must be local to the pickup (Cotonou → Cotonou, US → US).
+   * Live OSM discovery fills the catalog around the user; far seed cities are never mixed in.
    */
   public Map<String, Object> nearby(
       double lat, double lng, Double radiusKm, Integer limit, String serviceType, Integer qty
@@ -88,27 +99,18 @@ public class CatalogService {
     int lim = limit == null ? SeedData.NEARBY_LIMIT : Math.max(1, limit);
     String svc = serviceType == null || serviceType.isBlank() ? "wash" : serviceType.trim();
     int q = qty == null || qty < 1 ? 2 : qty;
-    Double cap = (radiusKm != null && radiusKm > 0) ? radiusKm : null;
+    final double cap = (radiusKm != null && radiusKm > 0)
+        ? Math.min(radiusKm, LaundryDiscoveryService.MAX_LOCAL_KM)
+        : LaundryDiscoveryService.MAX_LOCAL_KM;
 
-    List<Map.Entry<PartnerEntity, Double>> ranked = partnerRepository.findByActiveTrue().stream()
-        .map(p -> Map.entry(p, GeoUtils.haversineKm(lat, lng, p.getLat(), p.getLng())))
-        .sorted(Comparator.comparingDouble(Map.Entry::getValue))
-        .toList();
-
-    List<Map.Entry<PartnerEntity, Double>> chosen = ranked;
-    boolean expanded = false;
-    if (cap != null) {
-      List<Map.Entry<PartnerEntity, Double>> local = ranked.stream()
-          .filter(e -> e.getValue() <= cap)
-          .toList();
-      if (!local.isEmpty()) {
-        chosen = local;
-      } else {
-        expanded = !ranked.isEmpty();
-      }
+    if (laundryDiscoveryService != null && laundryDiscoveryService.isEnabled()) {
+      laundryDiscoveryService.ingestAround(lat, lng, lim);
     }
 
-    List<Map<String, Object>> offers = chosen.stream()
+    List<Map<String, Object>> offers = partnerRepository.findByActiveTrue().stream()
+        .map(p -> Map.entry(p, GeoUtils.haversineKm(lat, lng, p.getLat(), p.getLng())))
+        .filter(e -> e.getValue() <= cap)
+        .sorted(Comparator.comparingDouble(Map.Entry::getValue))
         .limit(lim)
         .map(e -> {
           PartnerEntity p = e.getKey();
@@ -126,8 +128,8 @@ public class CatalogService {
 
     Map<String, Object> body = new LinkedHashMap<>();
     body.put("pickup", Map.of("lat", lat, "lng", lng));
-    if (cap != null) body.put("radius_km", cap);
-    body.put("expanded", expanded);
+    body.put("radius_km", cap);
+    body.put("expanded", false);
     body.put("offers", offers);
     return body;
   }
