@@ -51,4 +51,24 @@ class GeocodeServiceTest {
     assertEquals(a.get("lat"), b.get("lat"));
     assertEquals(a.get("lng"), b.get("lng"));
   }
+
+  @Test
+  void cotonouIsNotRewrittenToLagosNigeria() {
+    Map<String, Object> result = geocodeService.geocode(
+        "Sike Codji, Rue Marina, Cotonou, Benin, Lagos, Nigeria"
+    );
+    String formatted = String.valueOf(result.get("formatted_address"));
+    assertTrue(formatted.toLowerCase().contains("cotonou"));
+    assertTrue(formatted.toLowerCase().contains("benin"));
+    assertTrue(!formatted.toLowerCase().contains("nigeria"), formatted);
+    double lng = ((Number) result.get("lng")).doubleValue();
+    assertTrue(lng < 3.0, "Cotonou is west of Lagos; got lng=" + lng);
+  }
+
+  @Test
+  void beninCityStaysInNigeria() {
+    Map<String, Object> result = geocodeService.geocode("Ring Road, Benin City");
+    String formatted = String.valueOf(result.get("formatted_address"));
+    assertTrue(formatted.contains("Nigeria"));
+  }
 }

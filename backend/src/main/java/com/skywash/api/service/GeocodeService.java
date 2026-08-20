@@ -122,7 +122,14 @@ public class GeocodeService {
     double baseLat = 6.5244;
     double baseLng = 3.3792;
     String city = "Lagos";
-    if (lower.contains("abuja") || lower.contains("wuse") || lower.contains("maitama") || lower.contains("garki")) {
+    String country = "Nigeria";
+    // Country / city first — never rewrite Cotonou into Lagos.
+    if (isCotonouBenin(lower)) {
+      baseLat = 6.3654;
+      baseLng = 2.4280;
+      city = "Cotonou";
+      country = "Benin";
+    } else if (lower.contains("abuja") || lower.contains("wuse") || lower.contains("maitama") || lower.contains("garki")) {
       baseLat = 9.0765; baseLng = 7.3986; city = "Abuja";
     } else if (lower.contains("port harcourt") || lower.contains("rumuola") || lower.contains("trans amadi")) {
       baseLat = 4.8156; baseLng = 7.0498; city = "Port Harcourt";
@@ -139,9 +146,40 @@ public class GeocodeService {
     Map<String, Object> out = new LinkedHashMap<>();
     out.put("lat", round4(baseLat + jitterLat));
     out.put("lng", round4(baseLng + jitterLng));
-    out.put("formatted_address", normalized + ", " + city + ", Nigeria");
+    out.put("formatted_address", formatDemoAddress(normalized, city, country));
     out.put("demo", true);
     return out;
+  }
+
+  /** Cotonou / Benin Republic — not Nigerian Benin City. */
+  static boolean isCotonouBenin(String lower) {
+    if (lower == null || lower.isBlank()) return false;
+    if (lower.contains("benin city")) return false;
+    return lower.contains("cotonou")
+        || lower.contains("benin republic")
+        || lower.contains("porto-novo")
+        || lower.contains("porto novo")
+        || lower.contains("sike codji")
+        || lower.contains("rue marina")
+        || lower.contains("fidjrosse")
+        || lower.contains("fidjrossè")
+        || (lower.contains("benin") && !lower.contains("nigeria"));
+  }
+
+  /** Keep the typed place; only append city/country when missing. */
+  static String formatDemoAddress(String normalized, String city, String country) {
+    String cleaned = normalized == null ? "" : normalized.trim();
+    if ("Benin".equalsIgnoreCase(country)) {
+      cleaned = cleaned.replaceAll("(?i),\\s*lagos\\s*,\\s*nigeria\\s*$", "").trim();
+      cleaned = cleaned.replaceAll("(?i),\\s*nigeria\\s*$", "").trim();
+    }
+    String lower = cleaned.toLowerCase(Locale.ROOT);
+    boolean hasCity = city != null && lower.contains(city.toLowerCase(Locale.ROOT));
+    boolean hasCountry = country != null && lower.contains(country.toLowerCase(Locale.ROOT));
+    if (hasCity && hasCountry) return cleaned;
+    if (hasCity) return cleaned + ", " + country;
+    if (hasCountry) return cleaned;
+    return cleaned + ", " + city + ", " + country;
   }
 
   private static String encode(String value) {
