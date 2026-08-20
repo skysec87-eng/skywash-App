@@ -82,6 +82,36 @@ public class EmailService {
     );
   }
 
+  /**
+   * Best-effort partner/ops alert. Never throws — delivery confirm must stay green if mail is down.
+   * @return true if a provider accepted the message
+   */
+  public boolean sendPartnerAlert(String toEmail, String subject, String body) {
+    if (!StringUtils.hasText(toEmail)) {
+      log.warn("Partner alert skipped — empty recipient");
+      return false;
+    }
+    if (!enabled) {
+      log.info("Mail disabled — partner alert to {}: {}", toEmail, subject);
+      return true;
+    }
+    try {
+      if (StringUtils.hasText(resendApiKey)) {
+        sendViaResend(toEmail.trim(), subject, body);
+        return true;
+      }
+      if (StringUtils.hasText(smtpUsername)) {
+        sendViaSmtp(toEmail.trim(), subject, body);
+        return true;
+      }
+      log.warn("Partner alert not sent — no RESEND_API_KEY/SMTP configured (to={})", toEmail);
+      return false;
+    } catch (Exception ex) {
+      log.error("Partner alert failed for {}: {}", toEmail, ex.getMessage());
+      return false;
+    }
+  }
+
   private void sendViaResend(String toEmail, String subject, String body) {
     try {
       String json = objectMapper.writeValueAsString(new ResendPayload(from, new String[]{toEmail}, subject, body));

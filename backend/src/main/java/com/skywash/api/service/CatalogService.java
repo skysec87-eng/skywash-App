@@ -144,6 +144,7 @@ public class CatalogService {
     m.put("lng", p.getLng());
     m.put("rating", p.getRating());
     m.put("phone", p.getPhone());
+    m.put("email", p.getEmail());
     if (lat != null && lng != null) {
       m.put("distance_km", round1(GeoUtils.haversineKm(lat, lng, p.getLat(), p.getLng())));
     }

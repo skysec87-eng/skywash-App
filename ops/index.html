@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>skyWash Partner Ops</title>
+<meta name="description" content="Laundry partner operations — live orders and customer confirmation alerts.">
+<meta name="theme-color" content="#08283a">
+<link rel="stylesheet" href="/ops/ops.css">
+<script>
+  window.SKYWASH_API_BASE = 'https://sky-wash-production.up.railway.app';
+</script>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div>
+        <h1 class="brand">skyWash Partner Ops</h1>
+        <p class="sub">Live orders · email &amp; WhatsApp alerts when customers confirm receipt</p>
+      </div>
+      <div class="live" id="opsLive">Waiting for unlock</div>
+    </div>
+
+    <section class="card">
+      <div class="row">
+        <div>
+          <label for="opsPin">Ops PIN</label>
+          <input id="opsPin" type="password" autocomplete="current-password" placeholder="Enter OPS_PIN">
+        </div>
+        <div>
+          <label for="opsPartner">Laundry partner</label>
+          <select id="opsPartner">
+            <option value="">Unlock to load partners…</option>
+          </select>
+        </div>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn btn-primary" id="opsUnlock">Unlock dashboard</button>
+        <button type="button" class="btn btn-ghost" id="opsRefresh">Refresh orders</button>
+      </div>
+      <div class="meta" id="opsStatus"></div>
+      <div class="error" id="opsError"></div>
+    </section>
+
+    <section class="card">
+      <h2 style="margin:0 0 4px;font-size:16px;">Orders</h2>
+      <p class="sub" style="margin:0 0 8px;">Status flips to <b>Customer confirmed</b> the moment the client taps Confirm receipt.</p>
+      <div id="opsOrders"><div class="empty">Unlock with your ops PIN to view this laundry’s trips.</div></div>
+    </section>
+  </div>
+  <script src="/ops/ops.js"></script>
+</body>
+</html>

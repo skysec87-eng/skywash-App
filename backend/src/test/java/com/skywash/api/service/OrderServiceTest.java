@@ -34,13 +34,16 @@ class OrderServiceTest {
   @Mock private PricingService pricingService;
   @Mock private OrderRepository orderRepository;
   @Mock private OrderMessageService orderMessageService;
+  @Mock private PartnerNotifyService partnerNotifyService;
 
   private OrderService orderService;
   private PartnerEntity partner;
 
   @BeforeEach
   void setUp() {
-    orderService = new OrderService(catalogService, pricingService, orderRepository, orderMessageService);
+    orderService = new OrderService(
+        catalogService, pricingService, orderRepository, orderMessageService, partnerNotifyService
+    );
     partner = TestFixtures.partner("p1", "Laundry Care Lekki", "Lagos", "Lekki", 6.450511, 3.4704056, 5.0);
   }
 

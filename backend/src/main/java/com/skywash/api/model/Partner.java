@@ -10,5 +10,6 @@ public record Partner(
     double lng,
     double rating,
     String phone,
+    String email,
     boolean isActive
 ) {}

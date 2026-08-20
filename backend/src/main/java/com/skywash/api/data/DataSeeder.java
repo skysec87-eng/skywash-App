@@ -49,8 +49,21 @@ public class DataSeeder implements ApplicationRunner {
         e.setLng(p.lng());
         e.setRating(p.rating());
         e.setPhone(p.phone());
+        e.setEmail(p.email());
         e.setActive(p.isActive());
         partnerRepository.save(e);
+      }
+    } else {
+      // Backfill email for existing partners seeded before this field existed.
+      for (PartnerEntity e : partnerRepository.findAll()) {
+        if (e.getEmail() == null || e.getEmail().isBlank()) {
+          String slug = e.getName() == null ? "partner" : e.getName().toLowerCase()
+              .replaceAll("[^a-z0-9]+", ".")
+              .replaceAll("^\\.|\\.$", "");
+          if (slug.length() > 28) slug = slug.substring(0, 28).replaceAll("\\.$", "");
+          e.setEmail("ops@" + slug + ".partner.skywash.app");
+          partnerRepository.save(e);
+        }
       }
     }
   }

@@ -23,6 +23,7 @@ public final class TestFixtures {
     p.setLng(lng);
     p.setRating(rating);
     p.setPhone("+2348000000000");
+    p.setEmail("ops@test.laundry.partner.skywash.app");
     p.setActive(true);
     return p;
   }

@@ -28,17 +28,20 @@ public class OrderService {
   private final PricingService pricingService;
   private final OrderRepository orderRepository;
   private final OrderMessageService orderMessageService;
+  private final PartnerNotifyService partnerNotifyService;
 
   public OrderService(
       CatalogService catalogService,
       PricingService pricingService,
       OrderRepository orderRepository,
-      OrderMessageService orderMessageService
+      OrderMessageService orderMessageService,
+      PartnerNotifyService partnerNotifyService
   ) {
     this.catalogService = catalogService;
     this.pricingService = pricingService;
     this.orderRepository = orderRepository;
     this.orderMessageService = orderMessageService;
+    this.partnerNotifyService = partnerNotifyService;
   }
 
   @Transactional
@@ -275,8 +278,14 @@ public class OrderService {
       );
     }
     Instant now = Instant.now();
-    applyNextStatus(o, "delivered", labelFor("delivered"), now);
-    return toModel(orderRepository.save(o));
+    applyNextStatus(o, "delivered", "Customer confirmed", now);
+    OrderEntity saved = orderRepository.save(o);
+    try {
+      partnerNotifyService.onDeliveryConfirmed(saved);
+    } catch (Exception ex) {
+      // Never fail customer confirm if notify path breaks
+    }
+    return toModel(saved);
   }
 
   @Transactional

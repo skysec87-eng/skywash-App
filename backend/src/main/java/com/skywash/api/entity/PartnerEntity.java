@@ -35,6 +35,8 @@ public class PartnerEntity {
 
   private String phone;
 
+  private String email;
+
   @Column(name = "is_active", nullable = false)
   private boolean active = true;
 
@@ -56,6 +58,8 @@ public class PartnerEntity {
   public void setRating(double rating) { this.rating = rating; }
   public String getPhone() { return phone; }
   public void setPhone(String phone) { this.phone = phone; }
+  public String getEmail() { return email; }
+  public void setEmail(String email) { this.email = email; }
   public boolean isActive() { return active; }
   public void setActive(boolean active) { this.active = active; }
 }

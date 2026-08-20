@@ -61,7 +61,12 @@ public final class SeedData {
 
   private static Partner p(String name, String city, String area, String address,
                            double lat, double lng, double rating, String phone) {
-    return new Partner(UUID.randomUUID().toString(), name, city, area, address, lat, lng, rating, phone, true);
+    String slug = name.toLowerCase()
+        .replaceAll("[^a-z0-9]+", ".")
+        .replaceAll("^\\.|\\.$", "");
+    if (slug.length() > 28) slug = slug.substring(0, 28).replaceAll("\\.$", "");
+    String email = slug.isBlank() ? null : "ops@" + slug + ".partner.skywash.app";
+    return new Partner(UUID.randomUUID().toString(), name, city, area, address, lat, lng, rating, phone, email, true);
   }
 
   public static final List<StatusDef> STATUSES = List.of(
