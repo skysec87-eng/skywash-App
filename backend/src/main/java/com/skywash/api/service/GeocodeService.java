@@ -59,7 +59,8 @@ public class GeocodeService {
     }
     String normalized = address.trim();
     if (StringUtils.hasText(googleMapsApiKey)) {
-      return googleGeocode("address=" + encode(normalized));
+      Map<String, Object> google = googleGeocode("address=" + encode(normalized));
+      if (google != null) return google;
     }
     if (nominatimEnabled) {
       Map<String, Object> osm = nominatimSearch(normalized);
@@ -75,7 +76,8 @@ public class GeocodeService {
       throw new ApiException(HttpStatus.BAD_REQUEST, "valid lat and lng are required");
     }
     if (StringUtils.hasText(googleMapsApiKey)) {
-      return googleGeocode("latlng=" + lat + "," + lng);
+      Map<String, Object> google = googleGeocode("latlng=" + lat + "," + lng);
+      if (google != null) return google;
     }
     if (nominatimEnabled) {
       Map<String, Object> osm = nominatimReverse(lat, lng);
@@ -98,22 +100,23 @@ public class GeocodeService {
           .build();
       HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
       if (response.statusCode() < 200 || response.statusCode() >= 300) {
-        log.error("Google Geocoding HTTP {}", response.statusCode());
-        throw new ApiException(HttpStatus.BAD_GATEWAY, "Geocoding request failed");
+        log.warn("Google Geocoding HTTP {} — trying OpenStreetMap", response.statusCode());
+        return null;
       }
       JsonNode root = objectMapper.readTree(response.body());
       String status = root.path("status").asText("");
       if ("ZERO_RESULTS".equals(status)) {
-        throw new ApiException(HttpStatus.NOT_FOUND, "No location found for that address");
+        log.info("Google Geocoding ZERO_RESULTS — trying OpenStreetMap");
+        return null;
       }
       if (!"OK".equals(status)) {
         String err = root.path("error_message").asText(status);
-        log.error("Google Geocoding status {}: {}", status, err);
-        throw new ApiException(HttpStatus.BAD_GATEWAY, "Geocoding failed: " + status);
+        log.warn("Google Geocoding status {}: {} — trying OpenStreetMap", status, err);
+        return null;
       }
       JsonNode first = root.path("results").path(0);
       if (first.isMissingNode() || first.isNull()) {
-        throw new ApiException(HttpStatus.NOT_FOUND, "No location found for that address");
+        return null;
       }
       JsonNode loc = first.path("geometry").path("location");
       Map<String, Object> out = new LinkedHashMap<>();
@@ -123,11 +126,9 @@ public class GeocodeService {
       out.put("demo", false);
       out.put("provider", "google");
       return out;
-    } catch (ApiException ex) {
-      throw ex;
     } catch (Exception ex) {
-      log.error("Google Geocoding error: {}", ex.getMessage());
-      throw new ApiException(HttpStatus.BAD_GATEWAY, "Could not resolve that location");
+      log.warn("Google Geocoding error: {} — trying OpenStreetMap", ex.getMessage());
+      return null;
     }
   }
 

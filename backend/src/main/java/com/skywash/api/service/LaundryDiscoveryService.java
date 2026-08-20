@@ -16,6 +16,7 @@ import java.util.zip.CRC32;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -33,8 +34,14 @@ import com.skywash.api.repo.PartnerRepository;
 public class LaundryDiscoveryService {
 
   private static final Logger log = LoggerFactory.getLogger(LaundryDiscoveryService.class);
-  private static final String OVERPASS = "https://overpass-api.de/api/interpreter";
-  private static final double[] RING_KM = {8, 20};
+  /** Public Overpass mirrors — dense cities like London often 504 the main endpoint. */
+  private static final String[] OVERPASS_URLS = {
+      "https://overpass-api.de/api/interpreter",
+      "https://lz4.overpass-api.de/api/interpreter",
+      "https://overpass.kumi.systems/api/interpreter"
+  };
+  /** Tight first ring so London/NYC queries finish; expand only if sparse. */
+  private static final double[] RING_KM = {2, 8, 20};
   public static final double MAX_LOCAL_KM = 20;
 
   private final PartnerRepository partnerRepository;
@@ -42,6 +49,7 @@ public class LaundryDiscoveryService {
   private final HttpClient httpClient;
   private final boolean enabled;
 
+  @Autowired
   public LaundryDiscoveryService(
       PartnerRepository partnerRepository,
       ObjectMapper objectMapper,
@@ -51,6 +59,7 @@ public class LaundryDiscoveryService {
     this.objectMapper = objectMapper;
     this.httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(8)).build();
     this.enabled = enabled;
+    log.info("Local laundry discovery {}", enabled ? "ON (OpenStreetMap)" : "OFF");
   }
 
   /** Tests — discovery off, no HTTP. */
@@ -87,14 +96,14 @@ public class LaundryDiscoveryService {
 
   List<Map<String, Object>> fetchRing(double lat, double lng, double km) throws Exception {
     String query = """
-        [out:json][timeout:20];
+        [out:json][timeout:18];
         (
           nwr["shop"="laundry"](around:%d,%s,%s);
           nwr["amenity"="laundry"](around:%d,%s,%s);
           nwr["shop"="dry_cleaning"](around:%d,%s,%s);
           nwr["amenity"="dry_cleaning"](around:%d,%s,%s);
         );
-        out center tags;
+        out center tags 80;
         """.formatted(
         meters(km), lat, lng,
         meters(km), lat, lng,
@@ -102,17 +111,26 @@ public class LaundryDiscoveryService {
         meters(km), lat, lng
     ).trim();
     String body = "data=" + URLEncoder.encode(query, StandardCharsets.UTF_8);
-    HttpRequest request = HttpRequest.newBuilder(URI.create(OVERPASS))
-        .timeout(Duration.ofSeconds(22))
-        .header("User-Agent", "skyWash/1.0 (https://sudsnear-deploy.vercel.app)")
-        .header("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
-        .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8))
-        .build();
-    HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
-    if (response.statusCode() < 200 || response.statusCode() >= 300) {
-      throw new IllegalStateException("Overpass HTTP " + response.statusCode());
+    Exception last = null;
+    for (String url : OVERPASS_URLS) {
+      try {
+        HttpRequest request = HttpRequest.newBuilder(URI.create(url))
+            .timeout(Duration.ofSeconds(20))
+            .header("User-Agent", "skyWash/1.0 (https://sudsnear-deploy.vercel.app)")
+            .header("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8")
+            .POST(HttpRequest.BodyPublishers.ofString(body, StandardCharsets.UTF_8))
+            .build();
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+        if (response.statusCode() < 200 || response.statusCode() >= 300) {
+          throw new IllegalStateException("Overpass HTTP " + response.statusCode() + " from " + url);
+        }
+        return parseElements(objectMapper.readTree(response.body()));
+      } catch (Exception ex) {
+        last = ex;
+        log.warn("Overpass {}km failed: {}", km, ex.getMessage());
+      }
     }
-    return parseElements(objectMapper.readTree(response.body()));
+    throw last != null ? last : new IllegalStateException("Overpass unavailable");
   }
 
   static List<Map<String, Object>> parseElements(JsonNode root) {
