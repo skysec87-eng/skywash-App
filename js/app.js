@@ -1547,6 +1547,8 @@ function renderEtaBreakdown(detail){
   });
 }
 
+let confirmDeliveryInFlight = false;
+
 function updateConfirmDeliveryUi(detail){
   const panel = document.getElementById('confirmDeliveryPanel');
   const btn = document.getElementById('confirmDeliveryBtn');
@@ -1555,6 +1557,10 @@ function updateConfirmDeliveryUi(detail){
   panel.classList.toggle('hidden', !show);
   const arrived = show && detail.status_label && /confirm/i.test(String(detail.status_label));
   panel.classList.toggle('arrived', !!arrived);
+  // Never leave the CTA stuck gray after a failed/hung confirm attempt.
+  if(show && !confirmDeliveryInFlight){
+    btn.disabled = false;
+  }
   if(arrived){
     document.getElementById('tripEta').textContent = 'Confirm receipt';
     const deliverStep = document.getElementById('step-delivering');
@@ -1568,8 +1574,9 @@ function updateConfirmDeliveryUi(detail){
 const confirmDeliveryBtn = document.getElementById('confirmDeliveryBtn');
 if(confirmDeliveryBtn){
   confirmDeliveryBtn.onclick = async ()=>{
-    if(!currentOrderId) return;
+    if(!currentOrderId || confirmDeliveryInFlight) return;
     if(!confirm('Confirm you received your laundry and there are no issues?')) return;
+    confirmDeliveryInFlight = true;
     confirmDeliveryBtn.disabled = true;
     try{
       await api('/api/orders/' + currentOrderId + '/delivery-confirmations', {
@@ -1580,7 +1587,11 @@ if(confirmDeliveryBtn){
       syncTripFromOrder(detail);
     }catch(err){
       alert('Could not confirm delivery: ' + err.message);
-      confirmDeliveryBtn.disabled = false;
+    }finally{
+      confirmDeliveryInFlight = false;
+      if(currentOrderSnapshot && currentOrderSnapshot.status === 'delivering'){
+        confirmDeliveryBtn.disabled = false;
+      }
     }
   };
 }
