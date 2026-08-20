@@ -1235,7 +1235,7 @@ requestBtn.onclick = async ()=>{
     const primary = (selectedServices && selectedServices[0]) || { type: 'wash' };
     const qty = typeof weight === 'number' && weight > 0 ? weight : 2;
     const data = await api(
-      `/api/partners/nearby?lat=${userLoc.lat}&lng=${userLoc.lng}&limit=8`
+      `/api/partners/nearby?lat=${userLoc.lat}&lng=${userLoc.lng}&radius_km=20000&limit=8`
       + `&service=${encodeURIComponent(primary.type)}&qty=${qty}`
     );
     nearbyOffers = (data.offers || []).map(o => ({
