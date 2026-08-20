@@ -831,7 +831,13 @@ function renderBrowse(){
   const term = document.getElementById('browseSearch').value.trim();
   const list = document.getElementById('browseList');
   list.innerHTML = `<div class="history-empty">Loading partners…</div>`;
-  const qs = term ? `?q=${encodeURIComponent(term)}` : '';
+  const params = new URLSearchParams();
+  if (term) params.set('q', term);
+  if (userLoc && Number.isFinite(userLoc.lat) && Number.isFinite(userLoc.lng)) {
+    params.set('lat', String(userLoc.lat));
+    params.set('lng', String(userLoc.lng));
+  }
+  const qs = params.toString() ? ('?' + params.toString()) : '';
   api('/api/partners' + qs).then(data=>{
     const rows = data.partners || [];
     list.innerHTML = '';
@@ -1274,7 +1280,7 @@ function showOffers(){
   Object.values(storeMarkers).forEach(m => m.setIcon(ICON_STORE));
 
   if(!nearbyOffers.length){
-    list.innerHTML = `<div class="history-empty">No laundry found near this pickup. Try a street in a denser neighborhood — we only show shops around you, not another city.</div>`;
+    list.innerHTML = `<div class="history-empty">No laundry found near this pickup. We look up shops around you on the map — try a nearby street if this area is sparse.</div>`;
     showStep('stepMatched');
     return;
   }

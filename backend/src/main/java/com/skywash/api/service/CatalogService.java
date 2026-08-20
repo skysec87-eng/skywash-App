@@ -74,14 +74,27 @@ public class CatalogService {
   public List<Map<String, Object>> listPartners(String q, String city, Double lat, Double lng) {
     String term = q == null ? "" : q.trim().toLowerCase(Locale.ROOT);
     String cityFilter = city == null ? "" : city.trim().toLowerCase(Locale.ROOT);
+    boolean local = lat != null && lng != null
+        && !lat.isNaN() && !lng.isNaN()
+        && Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
+
+    if (local && laundryDiscoveryService != null && laundryDiscoveryService.isEnabled()) {
+      laundryDiscoveryService.ingestAround(lat, lng, SeedData.NEARBY_LIMIT);
+    }
 
     return partnerRepository.findByActiveTrue().stream()
-        .filter(p -> cityFilter.isEmpty() || p.getCity().toLowerCase(Locale.ROOT).equals(cityFilter))
-        .filter(p -> term.isEmpty()
-            || p.getName().toLowerCase(Locale.ROOT).contains(term)
-            || p.getArea().toLowerCase(Locale.ROOT).contains(term)
-            || p.getCity().toLowerCase(Locale.ROOT).contains(term))
-        .map(p -> toPartnerMap(p, lat, lng))
+        .map(p -> Map.entry(p, local ? GeoUtils.haversineKm(lat, lng, p.getLat(), p.getLng()) : 0.0))
+        .filter(e -> !local || e.getValue() <= LaundryDiscoveryService.MAX_LOCAL_KM)
+        .filter(e -> {
+          var p = e.getKey();
+          if (!cityFilter.isEmpty() && !p.getCity().toLowerCase(Locale.ROOT).equals(cityFilter)) return false;
+          if (term.isEmpty()) return true;
+          return p.getName().toLowerCase(Locale.ROOT).contains(term)
+              || p.getArea().toLowerCase(Locale.ROOT).contains(term)
+              || p.getCity().toLowerCase(Locale.ROOT).contains(term);
+        })
+        .sorted(Comparator.comparingDouble(Map.Entry::getValue))
+        .map(e -> toPartnerMap(e.getKey(), lat, lng))
         .collect(Collectors.toList());
   }
 

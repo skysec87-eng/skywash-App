@@ -43,4 +43,39 @@ class LaundryDiscoveryServiceTest {
     assertEquals("New York", places.get(1).get("city"));
     assertTrue(((Number) places.get(1).get("lng")).doubleValue() < 0);
   }
+
+  @Test
+  void parseGooglePlacesResults() throws Exception {
+    String json = """
+        {
+          "status": "OK",
+          "results": [
+            {
+              "place_id": "ChIJabc",
+              "name": "Ibadan Pressing",
+              "vicinity": "Ring Rd, Ibadan",
+              "rating": 4.4,
+              "geometry": { "location": { "lat": 7.3775, "lng": 3.9470 } }
+            },
+            {
+              "place_id": "ChIJcar",
+              "name": "Joe Car Wash",
+              "vicinity": "Ring Rd",
+              "geometry": { "location": { "lat": 7.38, "lng": 3.95 } }
+            }
+          ]
+        }
+        """;
+    var root = new ObjectMapper().readTree(json);
+    List<Map<String, Object>> places = LaundryDiscoveryService.parseGooglePlaces(root);
+    assertEquals(1, places.size());
+    assertEquals("gplace-ChIJabc", places.get(0).get("id"));
+    assertEquals("Ibadan Pressing", places.get(0).get("name"));
+  }
+
+  @Test
+  void skipsCarWashNames() {
+    assertTrue(LaundryDiscoveryService.skipPlace("Joe's Car Wash"));
+    assertTrue(!LaundryDiscoveryService.skipPlace("Ibadan Laundry Services"));
+  }
 }

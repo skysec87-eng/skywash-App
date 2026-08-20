@@ -5,9 +5,7 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.skywash.api.entity.PartnerEntity;
 import com.skywash.api.entity.ServiceTypeEntity;
-import com.skywash.api.model.Partner;
 import com.skywash.api.model.ServiceType;
 import com.skywash.api.repo.PartnerRepository;
 import com.skywash.api.repo.ServiceTypeRepository;
@@ -37,33 +35,15 @@ public class DataSeeder implements ApplicationRunner {
         serviceTypeRepository.save(e);
       }
     }
-    if (partnerRepository.count() == 0) {
-      for (Partner p : SeedData.partners()) {
-        PartnerEntity e = new PartnerEntity();
-        e.setId(p.id());
-        e.setName(p.name());
-        e.setCity(p.city());
-        e.setArea(p.area());
-        e.setAddress(p.address());
-        e.setLat(p.lat());
-        e.setLng(p.lng());
-        e.setRating(p.rating());
-        e.setPhone(p.phone());
-        e.setEmail(p.email());
-        e.setActive(p.isActive());
+    // Partners are discovered live around each pickup (OSM / Google Places), not seeded.
+    for (var e : partnerRepository.findAll()) {
+      if (e.getEmail() == null || e.getEmail().isBlank()) {
+        String slug = e.getName() == null ? "partner" : e.getName().toLowerCase()
+            .replaceAll("[^a-z0-9]+", ".")
+            .replaceAll("^\\.|\\.$", "");
+        if (slug.length() > 28) slug = slug.substring(0, 28).replaceAll("\\.$", "");
+        e.setEmail("ops@" + slug + ".partner.skywash.app");
         partnerRepository.save(e);
-      }
-    } else {
-      // Backfill email for existing partners seeded before this field existed.
-      for (PartnerEntity e : partnerRepository.findAll()) {
-        if (e.getEmail() == null || e.getEmail().isBlank()) {
-          String slug = e.getName() == null ? "partner" : e.getName().toLowerCase()
-              .replaceAll("[^a-z0-9]+", ".")
-              .replaceAll("^\\.|\\.$", "");
-          if (slug.length() > 28) slug = slug.substring(0, 28).replaceAll("\\.$", "");
-          e.setEmail("ops@" + slug + ".partner.skywash.app");
-          partnerRepository.save(e);
-        }
       }
     }
   }
