@@ -888,12 +888,71 @@ geoBtn.onclick=()=>{
   }, {enableHighAccuracy:true, timeout:8000});
 };
 
+/** Drop a demo ", Lagos, Nigeria" suffix when the user typed another country. */
+function stripForcedNigeriaSuffix(typed) {
+  const raw = String(typed || '').trim();
+  const stripped = raw.replace(/,\s*lagos\s*,\s*nigeria\s*$/i, '').replace(/,\s*nigeria\s*$/i, '').trim();
+  if (stripped === raw) return raw;
+  const knownNg = /\b(lagos|lekki|ajah|ikeja|yaba|ikoyi|surulere|abuja|port harcourt|sangotedo|victoria island)\b/i.test(stripped);
+  const otherPlace = /\b(cotonou|benin|togo|ghana|kenya|senegal|cameroon|france|canada|india|dubai|uae|london|paris|new york|accra|lome)\b/i.test(stripped)
+    && !/\bbenin city\b/i.test(stripped);
+  if (otherPlace || !knownNg) return stripped;
+  return raw;
+}
+
+function geoLooksForcedToNigeria(query, geo) {
+  if (!geo) return true;
+  const formatted = String(geo.formatted_address || '');
+  const lng = Number(geo.lng);
+  const q = String(query || '').toLowerCase();
+  const otherPlace = /\b(cotonou|benin|togo|ghana|kenya|senegal|cameroon|france|canada|india|dubai|uae|london|paris|new york|accra|lome)\b/i.test(q)
+    && !/\bbenin city\b/i.test(q);
+  const nigeriaLabel = /nigeria/i.test(formatted);
+  const lagosLng = !Number.isNaN(lng) && lng > 2.9 && lng < 4.2;
+  return !!(otherPlace && (geo.demo || nigeriaLabel || lagosLng));
+}
+
+async function nominatimGeocode(address) {
+  const url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=' + encodeURIComponent(address);
+  const res = await fetch(url, { headers: { Accept: 'application/json' } });
+  if (!res.ok) return null;
+  const arr = await res.json();
+  if (!arr || !arr[0] || arr[0].lat == null) return null;
+  return {
+    lat: parseFloat(arr[0].lat),
+    lng: parseFloat(arr[0].lon),
+    formatted_address: arr[0].display_name || address,
+    demo: false,
+    provider: 'nominatim'
+  };
+}
+
+async function geocodePickup(typed) {
+  const query = stripForcedNigeriaSuffix(typed);
+  let geo = null;
+  try {
+    geo = await api('/api/geocode', { method: 'POST', body: JSON.stringify({ address: query }) });
+  } catch (err) {
+    geo = { error: err };
+  }
+  if (geo && !geo.error && !geoLooksForcedToNigeria(query, geo)) {
+    return geo;
+  }
+  const osm = await nominatimGeocode(query);
+  if (osm) return osm;
+  if (geo && !geo.error) {
+    geo.formatted_address = query;
+    return geo;
+  }
+  throw (geo && geo.error) || new Error('No location found for that address');
+}
+
 addrInput.addEventListener('change', async ()=>{
   const address = addrInput.value.trim();
   if(!address) return;
   try{
-    const geo = await api('/api/geocode', { method:'POST', body: JSON.stringify({ address }) });
-    userLoc = { lat: geo.lat, lng: geo.lng, address: geo.formatted_address || address };
+    const geo = await geocodePickup(address);
+    userLoc = { lat: geo.lat, lng: geo.lng, address: geo.formatted_address || stripForcedNigeriaSuffix(address) };
     addrInput.value = userLoc.address;
     placeUserMarker();
     onLocationSet();
