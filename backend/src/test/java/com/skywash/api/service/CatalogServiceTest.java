@@ -80,7 +80,34 @@ class CatalogServiceTest {
 
     assertEquals(1, offers.size());
     assertEquals(40.0, nearby.get("radius_km"));
+    assertEquals(false, nearby.get("expanded"));
     assertTrue(((Number) offers.get(0).get("distance_km")).doubleValue() < 5);
+  }
+
+  @Test
+  void nearbyExpandsPastFortyKmToNearestPartners() {
+    when(partnerRepository.findByActiveTrue()).thenReturn(List.of(lekki, abuja));
+
+    // Cotonou-ish pickup — nothing is within 40 km of Lagos/Abuja shops.
+    Map<String, Object> nearby = catalogService.nearby(6.3654, 2.4280, 40.0, 8);
+    @SuppressWarnings("unchecked")
+    List<Map<String, Object>> offers = (List<Map<String, Object>>) nearby.get("offers");
+
+    assertEquals(true, nearby.get("expanded"));
+    assertEquals(2, offers.size());
+    assertTrue(((Number) offers.get(0).get("distance_km")).doubleValue() > 40);
+  }
+
+  @Test
+  void nearbyWithoutRadiusReturnsNearestUncapped() {
+    when(partnerRepository.findByActiveTrue()).thenReturn(List.of(lekki, abuja));
+
+    Map<String, Object> nearby = catalogService.nearby(6.3654, 2.4280, null, 8);
+    @SuppressWarnings("unchecked")
+    List<Map<String, Object>> offers = (List<Map<String, Object>>) nearby.get("offers");
+
+    assertEquals(false, nearby.get("expanded"));
+    assertEquals(2, offers.size());
   }
 
   @Test

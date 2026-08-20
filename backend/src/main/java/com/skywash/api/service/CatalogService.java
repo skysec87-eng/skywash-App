@@ -78,21 +78,37 @@ public class CatalogService {
   }
 
   /**
-   * @param serviceType optional primary service (wash|dry|iron|express); default wash
-   * @param qty bag size / item count used for wash timing
+   * Rank active partners by distance from pickup.
+   * No default 40 km cap — far pickups still get the nearest shops.
+   * An explicit radiusKm is a local preference; if nothing is inside it, we expand.
    */
   public Map<String, Object> nearby(
       double lat, double lng, Double radiusKm, Integer limit, String serviceType, Integer qty
   ) {
-    double radius = radiusKm == null ? SeedData.NEARBY_RADIUS_KM : radiusKm;
-    int lim = limit == null ? SeedData.NEARBY_LIMIT : limit;
+    int lim = limit == null ? SeedData.NEARBY_LIMIT : Math.max(1, limit);
     String svc = serviceType == null || serviceType.isBlank() ? "wash" : serviceType.trim();
     int q = qty == null || qty < 1 ? 2 : qty;
+    Double cap = (radiusKm != null && radiusKm > 0) ? radiusKm : null;
 
-    List<Map<String, Object>> offers = partnerRepository.findByActiveTrue().stream()
+    List<Map.Entry<PartnerEntity, Double>> ranked = partnerRepository.findByActiveTrue().stream()
         .map(p -> Map.entry(p, GeoUtils.haversineKm(lat, lng, p.getLat(), p.getLng())))
-        .filter(e -> e.getValue() <= radius)
         .sorted(Comparator.comparingDouble(Map.Entry::getValue))
+        .toList();
+
+    List<Map.Entry<PartnerEntity, Double>> chosen = ranked;
+    boolean expanded = false;
+    if (cap != null) {
+      List<Map.Entry<PartnerEntity, Double>> local = ranked.stream()
+          .filter(e -> e.getValue() <= cap)
+          .toList();
+      if (!local.isEmpty()) {
+        chosen = local;
+      } else {
+        expanded = !ranked.isEmpty();
+      }
+    }
+
+    List<Map<String, Object>> offers = chosen.stream()
         .limit(lim)
         .map(e -> {
           PartnerEntity p = e.getKey();
@@ -101,18 +117,19 @@ public class CatalogService {
           Map<String, Object> offer = new LinkedHashMap<>();
           offer.put("partner", toPartnerMap(p, null, null));
           offer.put("distance_km", round1(dist));
-          offer.put("eta_minutes", plan.pickupTravelMin()); // time to pickup
+          offer.put("eta_minutes", plan.pickupTravelMin());
           offer.put("total_eta_minutes", plan.totalMin());
           offer.put("eta_breakdown", plan.toMap());
           return offer;
         })
         .collect(Collectors.toList());
 
-    return Map.of(
-        "pickup", Map.of("lat", lat, "lng", lng),
-        "radius_km", radius,
-        "offers", offers
-    );
+    Map<String, Object> body = new LinkedHashMap<>();
+    body.put("pickup", Map.of("lat", lat, "lng", lng));
+    if (cap != null) body.put("radius_km", cap);
+    body.put("expanded", expanded);
+    body.put("offers", offers);
+    return body;
   }
 
   public PartnerEntity requirePartner(String id) {

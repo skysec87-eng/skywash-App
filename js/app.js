@@ -16,7 +16,6 @@ function t(key, vars){
 
 if(window.SkywashI18n) SkywashI18n.applyTheme(SkywashI18n.getThemePref());
 
-const NEARBY_RADIUS_KM = 40;
 
 const STATUSES = [
   {key:'confirmed', label:'Request confirmed'},
@@ -1236,7 +1235,7 @@ requestBtn.onclick = async ()=>{
     const primary = (selectedServices && selectedServices[0]) || { type: 'wash' };
     const qty = typeof weight === 'number' && weight > 0 ? weight : 2;
     const data = await api(
-      `/api/partners/nearby?lat=${userLoc.lat}&lng=${userLoc.lng}&radius_km=${NEARBY_RADIUS_KM}&limit=8`
+      `/api/partners/nearby?lat=${userLoc.lat}&lng=${userLoc.lng}&limit=8`
       + `&service=${encodeURIComponent(primary.type)}&qty=${qty}`
     );
     nearbyOffers = (data.offers || []).map(o => ({
@@ -1275,7 +1274,7 @@ function showOffers(){
   Object.values(storeMarkers).forEach(m => m.setIcon(ICON_STORE));
 
   if(!nearbyOffers.length){
-    list.innerHTML = `<div class="history-empty">No partners within ${NEARBY_RADIUS_KM} km of your pickup. Try another location, or browse the map for cities we cover.</div>`;
+    list.innerHTML = `<div class="history-empty">No laundry partners in the catalog yet. Try again shortly, or browse the map.</div>`;
     showStep('stepMatched');
     return;
   }
