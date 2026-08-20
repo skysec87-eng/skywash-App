@@ -43,7 +43,7 @@ public final class TripEtaCalculator {
    */
   public static final long DEMO_MS_PER_REAL_MIN = 180L;
   public static final long DEMO_PHASE_MIN_MS = 4_000L;
-  public static final long DEMO_PHASE_MAX_MS = 35_000L;
+  public static final long DEMO_PHASE_MAX_MS = 22_000L;
 
   private TripEtaCalculator() {}
 

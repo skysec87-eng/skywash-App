@@ -63,7 +63,7 @@
         'trip.washEta': 'wash',
         'trip.deliveryEta': 'delivery',
         'trip.confirmDelivery': 'Confirm receipt — no issues',
-        'trip.confirmDeliveryHint': 'Tap when you’ve received your laundry and everything looks good.',
+        'trip.confirmDeliveryHint': 'Tap when you’ve received your laundry and everything looks good. This notifies the laundry.',
         'trip.cancel': 'Cancel order',
         'rating.title': 'Delivered!',
         'rating.again': 'Book another pickup',

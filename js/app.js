@@ -1548,14 +1548,20 @@ function renderEtaBreakdown(detail){
 }
 
 function updateConfirmDeliveryUi(detail){
+  const panel = document.getElementById('confirmDeliveryPanel');
   const btn = document.getElementById('confirmDeliveryBtn');
-  const hint = document.getElementById('confirmDeliveryHint');
-  if(!btn || !hint) return;
+  if(!panel || !btn) return;
   const show = !!(detail && detail.status === 'delivering');
-  btn.classList.toggle('hidden', !show);
-  hint.classList.toggle('hidden', !show);
-  if(show && detail.status_label && /confirm/i.test(String(detail.status_label))){
+  panel.classList.toggle('hidden', !show);
+  const arrived = show && detail.status_label && /confirm/i.test(String(detail.status_label));
+  panel.classList.toggle('arrived', !!arrived);
+  if(arrived){
     document.getElementById('tripEta').textContent = 'Confirm receipt';
+    const deliverStep = document.getElementById('step-delivering');
+    if(deliverStep){
+      const labelEl = deliverStep.querySelector('.label');
+      if(labelEl) labelEl.textContent = detail.status_label;
+    }
   }
 }
 
