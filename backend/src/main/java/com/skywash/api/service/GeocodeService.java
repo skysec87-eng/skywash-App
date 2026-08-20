@@ -28,23 +28,29 @@ public class GeocodeService {
 
   private static final Logger log = LoggerFactory.getLogger(GeocodeService.class);
   private static final String GEOCODE_URL = "https://maps.googleapis.com/maps/api/geocode/json";
+  private static final String NOMINATIM_SEARCH = "https://nominatim.openstreetmap.org/search";
+  private static final String NOMINATIM_REVERSE = "https://nominatim.openstreetmap.org/reverse";
+  private static final String NOMINATIM_UA = "skyWash/1.0 (https://sudsnear-deploy.vercel.app; geocode)";
 
   private final ObjectMapper objectMapper;
   private final HttpClient httpClient;
   private final String googleMapsApiKey;
+  private final boolean nominatimEnabled;
 
   public GeocodeService(
       ObjectMapper objectMapper,
-      @Value("${google.maps.api-key:}") String googleMapsApiKey
+      @Value("${google.maps.api-key:}") String googleMapsApiKey,
+      @Value("${skywash.geocode.nominatim:true}") boolean nominatimEnabled
   ) {
     this.objectMapper = objectMapper;
     this.httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(8)).build();
     this.googleMapsApiKey = googleMapsApiKey == null ? "" : googleMapsApiKey.trim();
+    this.nominatimEnabled = nominatimEnabled;
   }
 
-  /** Package-private for unit tests without Spring. */
+  /** Package-private for unit tests without Spring / network. */
   GeocodeService() {
-    this(new ObjectMapper(), "");
+    this(new ObjectMapper(), "", false);
   }
 
   public Map<String, Object> geocode(String address) {
@@ -55,7 +61,13 @@ public class GeocodeService {
     if (StringUtils.hasText(googleMapsApiKey)) {
       return googleGeocode("address=" + encode(normalized));
     }
-    return demoGeocode(normalized);
+    if (nominatimEnabled) {
+      Map<String, Object> osm = nominatimSearch(normalized);
+      if (osm != null) return osm;
+    }
+    Map<String, Object> demo = demoKnownPlace(normalized);
+    if (demo != null) return demo;
+    throw new ApiException(HttpStatus.NOT_FOUND, "No location found for that address");
   }
 
   public Map<String, Object> reverse(double lat, double lng) {
@@ -64,6 +76,10 @@ public class GeocodeService {
     }
     if (StringUtils.hasText(googleMapsApiKey)) {
       return googleGeocode("latlng=" + lat + "," + lng);
+    }
+    if (nominatimEnabled) {
+      Map<String, Object> osm = nominatimReverse(lat, lng);
+      if (osm != null) return osm;
     }
     Map<String, Object> out = new LinkedHashMap<>();
     out.put("lat", round4(lat));
@@ -115,26 +131,102 @@ public class GeocodeService {
     }
   }
 
-  /** Deterministic demo geocoder when GOOGLE_MAPS_API_KEY is unset. */
-  private Map<String, Object> demoGeocode(String normalized) {
+  private Map<String, Object> nominatimSearch(String normalized) {
+    try {
+      URI uri = URI.create(NOMINATIM_SEARCH + "?format=jsonv2&limit=1&q=" + encode(normalized));
+      JsonNode root = nominatimGet(uri);
+      if (root == null || !root.isArray() || root.isEmpty()) {
+        return null;
+      }
+      return fromNominatimPlace(root.get(0), false);
+    } catch (Exception ex) {
+      log.warn("Nominatim search failed: {}", ex.getMessage());
+      return null;
+    }
+  }
+
+  private Map<String, Object> nominatimReverse(double lat, double lng) {
+    try {
+      URI uri = URI.create(
+          NOMINATIM_REVERSE + "?format=jsonv2&lat=" + lat + "&lon=" + lng
+      );
+      JsonNode root = nominatimGet(uri);
+      if (root == null || root.isMissingNode() || root.has("error")) {
+        return null;
+      }
+      return fromNominatimPlace(root, true);
+    } catch (Exception ex) {
+      log.warn("Nominatim reverse failed: {}", ex.getMessage());
+      return null;
+    }
+  }
+
+  private JsonNode nominatimGet(URI uri) throws Exception {
+    HttpRequest request = HttpRequest.newBuilder(uri)
+        .timeout(Duration.ofSeconds(12))
+        .header("User-Agent", NOMINATIM_UA)
+        .header("Accept", "application/json")
+        .GET()
+        .build();
+    HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
+    if (response.statusCode() < 200 || response.statusCode() >= 300) {
+      log.warn("Nominatim HTTP {}", response.statusCode());
+      return null;
+    }
+    return objectMapper.readTree(response.body());
+  }
+
+  private Map<String, Object> fromNominatimPlace(JsonNode place, boolean reverse) {
+    if (place == null || place.isMissingNode() || place.isNull()) return null;
+    JsonNode latNode = place.get("lat");
+    JsonNode lonNode = place.get("lon");
+    if (latNode == null || lonNode == null) return null;
+    Map<String, Object> out = new LinkedHashMap<>();
+    out.put("lat", Double.parseDouble(latNode.asText()));
+    out.put("lng", Double.parseDouble(lonNode.asText()));
+    String label = place.path("display_name").asText("");
+    if (!StringUtils.hasText(label) && reverse) {
+      label = "Current location";
+    }
+    out.put("formatted_address", label);
+    out.put("demo", false);
+    out.put("provider", "nominatim");
+    return out;
+  }
+
+  /**
+   * Offline fallback for a few known cities only.
+   * Unknown places are not dumped into Lagos, Nigeria.
+   */
+  private Map<String, Object> demoKnownPlace(String normalized) {
     String lower = normalized.toLowerCase(Locale.ROOT);
 
-    double baseLat = 6.5244;
-    double baseLng = 3.3792;
-    String city = "Lagos";
-    String country = "Nigeria";
-    // Country / city first — never rewrite Cotonou into Lagos.
+    double baseLat;
+    double baseLng;
+    String city;
+    String country;
+
     if (isCotonouBenin(lower)) {
       baseLat = 6.3654;
       baseLng = 2.4280;
       city = "Cotonou";
       country = "Benin";
     } else if (lower.contains("abuja") || lower.contains("wuse") || lower.contains("maitama") || lower.contains("garki")) {
-      baseLat = 9.0765; baseLng = 7.3986; city = "Abuja";
+      baseLat = 9.0765; baseLng = 7.3986; city = "Abuja"; country = "Nigeria";
     } else if (lower.contains("port harcourt") || lower.contains("rumuola") || lower.contains("trans amadi")) {
-      baseLat = 4.8156; baseLng = 7.0498; city = "Port Harcourt";
-    } else if (lower.contains("sangotedo") || lower.contains("lekki") || lower.contains("ajah")) {
-      baseLat = 6.4390; baseLng = 3.5050; city = "Lagos";
+      baseLat = 4.8156; baseLng = 7.0498; city = "Port Harcourt"; country = "Nigeria";
+    } else if (lower.contains("lagos")
+        || lower.contains("sangotedo")
+        || lower.contains("lekki")
+        || lower.contains("ajah")
+        || lower.contains("ikeja")
+        || lower.contains("yaba")
+        || lower.contains("ikoyi")
+        || lower.contains("surulere")
+        || lower.contains("victoria island")) {
+      baseLat = 6.4390; baseLng = 3.5050; city = "Lagos"; country = "Nigeria";
+    } else {
+      return null;
     }
 
     CRC32 crc = new CRC32();
@@ -166,10 +258,10 @@ public class GeocodeService {
         || (lower.contains("benin") && !lower.contains("nigeria"));
   }
 
-  /** Keep the typed place; only append city/country when missing. */
+  /** Keep the typed place; only append city/country when missing. Never invent Nigeria. */
   static String formatDemoAddress(String normalized, String city, String country) {
     String cleaned = normalized == null ? "" : normalized.trim();
-    if ("Benin".equalsIgnoreCase(country)) {
+    if (country != null && !"Nigeria".equalsIgnoreCase(country)) {
       cleaned = cleaned.replaceAll("(?i),\\s*lagos\\s*,\\s*nigeria\\s*$", "").trim();
       cleaned = cleaned.replaceAll("(?i),\\s*nigeria\\s*$", "").trim();
     }

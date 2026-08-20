@@ -8,6 +8,7 @@ import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpStatus;
 
 import com.skywash.api.config.ApiException;
 
@@ -66,9 +67,11 @@ class GeocodeServiceTest {
   }
 
   @Test
-  void beninCityStaysInNigeria() {
-    Map<String, Object> result = geocodeService.geocode("Ring Road, Benin City");
-    String formatted = String.valueOf(result.get("formatted_address"));
-    assertTrue(formatted.contains("Nigeria"));
+  void unknownGlobalAddressIsNotForcedToNigeria() {
+    ApiException ex = assertThrows(
+        ApiException.class,
+        () -> geocodeService.geocode("Times Square, New York, USA")
+    );
+    assertEquals(HttpStatus.NOT_FOUND, ex.getStatus());
   }
 }
