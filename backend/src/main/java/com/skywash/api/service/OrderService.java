@@ -194,7 +194,8 @@ public class OrderService {
 
   @Transactional
   public Map<String, Object> markPaid(String orderId, String reference, String channel) {
-    OrderEntity o = getEntity(orderId);
+    OrderEntity o = orderRepository.findById(orderId)
+        .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Order not found: " + orderId));
     if ("paid".equalsIgnoreCase(o.getPaymentStatus())) {
       return Map.of(
           "id", o.getId(),
@@ -208,8 +209,23 @@ public class OrderService {
     o.setPaymentChannel(channel);
     o.setPaidAt(Instant.now());
     o.setUpdatedAt(Instant.now());
-    o.getTimeline().add(new OrderEntity.TimelineEmbed("paid", "Payment received", Instant.now()));
-    orderRepository.save(o);
+    boolean alreadyLogged = o.getTimeline().stream()
+        .anyMatch(t -> t.getKey() != null && "paid".equalsIgnoreCase(t.getKey()));
+    if (!alreadyLogged) {
+      o.getTimeline().add(new OrderEntity.TimelineEmbed("paid", "Payment received", Instant.now()));
+    }
+    try {
+      orderRepository.saveAndFlush(o);
+    } catch (org.springframework.dao.DataIntegrityViolationException ex) {
+      // Concurrent webhook + verify both tried to append timeline — payment is still good.
+      OrderEntity again = getEntity(orderId);
+      return Map.of(
+          "id", again.getId(),
+          "payment_status", again.getPaymentStatus() == null ? "paid" : again.getPaymentStatus(),
+          "payment_reference", again.getPaymentReference() == null ? reference : again.getPaymentReference(),
+          "already_paid", true
+      );
+    }
     return Map.of(
         "id", o.getId(),
         "payment_status", "paid",

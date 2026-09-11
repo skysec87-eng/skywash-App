@@ -163,8 +163,12 @@ public class PaystackService {
           if (paid.get("id") != null) {
             out.put("order_id", String.valueOf(paid.get("id")));
           }
-        } catch (ApiException ex) {
+        } catch (Exception ex) {
+          // Paystack already succeeded — never fail the client on a timeline race.
           out.put("order_update_error", ex.getMessage());
+          if (orderId != null && !orderId.isBlank()) {
+            out.put("order_id", orderId);
+          }
         }
       }
       return out;
@@ -200,9 +204,14 @@ public class PaystackService {
       boolean successEvent = "charge.success".equals(event)
           || ("success".equalsIgnoreCase(status) && event.contains("charge"));
       if (successEvent && reference != null) {
-        Map<String, Object> paid = orderService.markPaidByReference(reference, channel, orderId);
-        out.put("handled", true);
-        out.put("order", paid);
+        try {
+          Map<String, Object> paid = orderService.markPaidByReference(reference, channel, orderId);
+          out.put("handled", true);
+          out.put("order", paid);
+        } catch (Exception ex) {
+          out.put("handled", true);
+          out.put("order_update_error", ex.getMessage());
+        }
       } else {
         out.put("handled", false);
         out.put("message", "Event acknowledged without order update");
