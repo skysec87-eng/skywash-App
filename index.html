@@ -417,13 +417,13 @@
 </div>
 
 <script>
-  // Production API (Railway). Local serve.py leaves this unset so /api is same-origin.
+  // Production API (Render). Local serve.py leaves this unset so /api is same-origin.
   if (location.hostname !== '127.0.0.1' && location.hostname !== 'localhost') {
-    window.SKYWASH_API_BASE = 'https://skywash-api.fly.dev';
+    window.SKYWASH_API_BASE = 'https://skywash-api.onrender.com';
   }
 </script>
 <script src="/js/i18n.js?v=40"></script>
-<script src="/js/register-sw.js?v=36"></script>
+<script src="/js/register-sw.js?v=37"></script>
 <script src="/js/app.js?v=43"></script>
 </body>
 </html>

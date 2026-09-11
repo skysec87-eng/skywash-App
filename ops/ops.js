@@ -1,5 +1,5 @@
 (() => {
-  const API_BASE = (window.SKYWASH_API_BASE || 'https://skywash-api.fly.dev').replace(/\/$/, '');
+  const API_BASE = (window.SKYWASH_API_BASE || 'https://skywash-api.onrender.com').replace(/\/$/, '');
   const pinEl = document.getElementById('opsPin');
   const partnerEl = document.getElementById('opsPartner');
   const unlockBtn = document.getElementById('opsUnlock');
