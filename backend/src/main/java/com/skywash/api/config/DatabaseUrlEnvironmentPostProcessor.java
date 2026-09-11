@@ -50,8 +50,11 @@ public class DatabaseUrlEnvironmentPostProcessor implements EnvironmentPostProce
       if (host != null && host.endsWith(".flycast")) {
         host = host.substring(0, host.length() - ".flycast".length()) + ".internal";
       }
-      String jdbc = "jdbc:postgresql://" + host + ":" + port + "/" + db
-          + (databaseUrl.contains("sslmode=") ? "" : "?sslmode=disable");
+      String ssl = "?sslmode=disable";
+      if (host != null && host.contains("neon.tech") || databaseUrl.contains("sslmode=require")) {
+        ssl = "?sslmode=require";
+      }
+      String jdbc = "jdbc:postgresql://" + host + ":" + port + "/" + db + ssl;
 
       Map<String, Object> props = new HashMap<>();
       props.put("spring.datasource.url", jdbc);

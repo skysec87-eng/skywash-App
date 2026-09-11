@@ -1,0 +1,54 @@
+# skyWash API on Render (free web service).
+# Dashboard: New → Blueprint → this file
+# Secrets (DATABASE_URL, API keys) are prompted in the dashboard — not stored here.
+
+services:
+  - type: web
+    name: skywash-api
+    runtime: docker
+    plan: free
+    region: frankfurt
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /api/health
+    envVars:
+      - key: PORT
+        value: "8080"
+      - key: JAVA_OPTS
+        value: "-Xms128m -Xmx384m"
+      - key: CORS_ALLOWED_ORIGINS
+        value: "http://127.0.0.1:3000,http://localhost:3000,https://sudsnear-deploy.vercel.app"
+      - key: MAIL_ENABLED
+        value: "true"
+      - key: MAIL_FROM
+        value: "skyWash <onboarding@resend.dev>"
+      - key: LLAMA_BASE_URL
+        value: "https://api.groq.com/openai/v1"
+      - key: LLAMA_MODEL
+        value: "llama-3.3-70b-versatile"
+      - key: SUPPORT_EMAIL
+        value: "isaac.arinze.dev@gmail.com"
+      - key: PARTNER_NOTIFY_FALLBACK_EMAIL
+        value: "isaac.arinze.dev@gmail.com"
+      - key: DATABASE_URL
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: GOOGLE_OAUTH_CLIENT_ID
+        sync: false
+      - key: GOOGLE_OAUTH_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_MAPS_API_KEY
+        sync: false
+      - key: LLAMA_API_KEY
+        sync: false
+      - key: PAYSTACK_SECRET_KEY
+        sync: false
+      - key: PAYSTACK_PUBLIC_KEY
+        sync: false
+      - key: PAYSTACK_CALLBACK_URL
+        sync: false
+      - key: PAYSTACK_FRONTEND_CALLBACK_URL
+        sync: false
+      - key: OPS_PIN
+        sync: false

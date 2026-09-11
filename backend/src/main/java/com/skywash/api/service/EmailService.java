@@ -26,6 +26,8 @@ public class EmailService {
   private static final Logger log = LoggerFactory.getLogger(EmailService.class);
   private static final URI RESEND_URI = URI.create("https://api.resend.com/emails");
 
+  private static final String RESEND_TEST_FROM = "skyWash <onboarding@resend.dev>";
+
   private final JavaMailSender mailSender;
   private final ObjectMapper objectMapper;
   private final HttpClient httpClient;
@@ -38,7 +40,7 @@ public class EmailService {
       JavaMailSender mailSender,
       ObjectMapper objectMapper,
       @Value("${skywash.mail.enabled:true}") boolean enabled,
-      @Value("${skywash.mail.from:skyWash <onboarding@resend.dev>}") String from,
+      @Value("${skywash.mail.from:onboarding@resend.dev}") String from,
       @Value("${spring.mail.username:}") String smtpUsername,
       @Value("${resend.api-key:}") String resendApiKey
   ) {
@@ -46,9 +48,17 @@ public class EmailService {
     this.objectMapper = objectMapper;
     this.httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(8)).build();
     this.enabled = enabled;
-    this.from = from;
+    this.from = from == null ? "" : from.trim();
     this.smtpUsername = smtpUsername == null ? "" : smtpUsername.trim();
     this.resendApiKey = resendApiKey == null ? "" : resendApiKey.trim();
+  }
+
+  /** Resend testing only accepts onboarding@resend.dev until a domain is verified. */
+  private String resendFrom() {
+    if (from.contains("resend.dev") && !from.contains(".test")) {
+      return from.contains("<") ? from : "skyWash <" + from + ">";
+    }
+    return RESEND_TEST_FROM;
   }
 
   public void sendOtp(String toEmail, String code) {
@@ -114,7 +124,7 @@ public class EmailService {
 
   private void sendViaResend(String toEmail, String subject, String body) {
     try {
-      String json = objectMapper.writeValueAsString(new ResendPayload(from, new String[]{toEmail}, subject, body));
+      String json = objectMapper.writeValueAsString(new ResendPayload(resendFrom(), new String[]{toEmail}, subject, body));
       HttpRequest request = HttpRequest.newBuilder(RESEND_URI)
           .timeout(Duration.ofSeconds(15))
           .header("Authorization", "Bearer " + resendApiKey)
