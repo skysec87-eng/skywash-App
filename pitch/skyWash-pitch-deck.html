@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>skyWash — Pitch Deck (GITEX Nigeria)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --lagoon-900: #08283a;
+    --lagoon-800: #0d3a52;
+    --lagoon-700: #134f6e;
+    --sun: #ffc93c;
+    --foam: #f7fbf9;
+    --ink: #0a2230;
+    --ink-soft: #4a6572;
+    --line: #d8e6e3;
+    --good: #2f9e6e;
+    --warn: #c0503a;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    font-family: Inter, system-ui, sans-serif;
+    background: #121212;
+    color: var(--ink);
+  }
+  .toolbar {
+    position: sticky; top: 0; z-index: 20;
+    display: flex; gap: 12px; align-items: center; justify-content: space-between;
+    padding: 12px 18px;
+    background: var(--lagoon-900); color: var(--foam);
+    font-size: 13px;
+  }
+  .toolbar strong { color: var(--sun); }
+  .toolbar button {
+    appearance: none; border: none; cursor: pointer;
+    background: var(--sun); color: var(--lagoon-900);
+    font-weight: 800; font-size: 13px; padding: 10px 16px; border-radius: 999px;
+  }
+  .deck {
+    max-width: 1180px;
+    margin: 22px auto 72px;
+    display: flex; flex-direction: column; gap: 26px;
+    padding: 0 14px;
+  }
+  .slide {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background: var(--foam);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 18px 50px rgba(0,0,0,0.38);
+    padding: 40px 52px;
+    position: relative;
+    display: flex; flex-direction: column;
+  }
+  .slide.dark {
+    background:
+      radial-gradient(1000px 420px at 85% -10%, rgba(255,201,60,0.18), transparent 55%),
+      linear-gradient(145deg, #061f2e 0%, var(--lagoon-900) 45%, var(--lagoon-800) 100%);
+    color: var(--foam);
+  }
+  .eyebrow {
+    font-size: 11px; font-weight: 800; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--sun); margin: 0 0 12px;
+  }
+  h1, h2 {
+    font-family: Fraunces, Georgia, serif;
+    margin: 0 0 14px; letter-spacing: -0.025em;
+  }
+  h1 { font-size: 52px; line-height: 1.02; max-width: 920px; }
+  h2 { font-size: 34px; line-height: 1.12; color: var(--lagoon-900); max-width: 920px; }
+  .slide.dark h2 { color: var(--foam); }
+  .brand span { color: var(--sun); }
+  p, li { font-size: 16.5px; line-height: 1.4; color: var(--ink-soft); }
+  .slide.dark p, .slide.dark li { color: #c5d7df; }
+  .lead { font-size: 20px; max-width: 860px; color: var(--ink); font-weight: 500; }
+  .slide.dark .lead { color: #e8f2f6; }
+  ul { margin: 6px 0 0; padding-left: 20px; }
+  li { margin: 7px 0; }
+  li strong { color: var(--ink); }
+  .slide.dark li strong { color: var(--foam); }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 6px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 10px; }
+  .card {
+    background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px;
+  }
+  .slide.dark .card {
+    background: rgba(255,255,255,0.06); border-color: rgba(255,255,255,0.12);
+  }
+  .card h3 { margin: 0 0 8px; font-size: 15px; font-weight: 800; color: var(--lagoon-900); }
+  .slide.dark .card h3 { color: var(--sun); }
+  .card p, .card li { font-size: 14px; margin: 0; }
+  .card ul { margin-top: 4px; padding-left: 16px; }
+  .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 16px; }
+  .stat-row.three { grid-template-columns: repeat(3, 1fr); }
+  .stat {
+    background: rgba(255,201,60,0.11); border: 1px solid rgba(255,201,60,0.32);
+    border-radius: 12px; padding: 14px 14px 12px;
+  }
+  .stat b { display: block; font-size: 24px; color: var(--sun); margin-bottom: 2px; font-weight: 800; }
+  .stat span { font-size: 12.5px; color: #c5d7df; line-height: 1.3; display: block; }
+  .pill {
+    display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: 0.06em;
+    text-transform: uppercase; padding: 5px 10px; border-radius: 999px;
+    background: rgba(255,201,60,0.18); color: var(--sun); margin-bottom: 10px;
+  }
+  .compare { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 14px; }
+  .compare th, .compare td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+  .compare th { font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-soft); }
+  .compare td strong { color: var(--good); }
+  .ask-box {
+    margin-top: 10px; padding: 16px 18px; border-radius: 14px;
+    background: rgba(255,201,60,0.12); border: 1px solid rgba(255,201,60,0.35);
+  }
+  .ask-box p { margin: 0; color: #e8f2f6; font-size: 16px; }
+  .footer {
+    margin-top: auto; padding-top: 14px;
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 11.5px; color: var(--ink-soft);
+  }
+  .slide.dark .footer { color: #8fa9b3; }
+  .quote {
+    margin: 8px 0 0; padding: 14px 16px; border-left: 4px solid var(--sun);
+    background: rgba(8,40,58,0.04); border-radius: 0 12px 12px 0;
+    font-size: 17px; color: var(--ink); font-weight: 600;
+  }
+  .flow {
+    display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-top: 14px;
+  }
+  .flow .step {
+    background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 12px;
+    text-align: center; font-size: 13px; font-weight: 700; color: var(--lagoon-900);
+  }
+  .flow .step small { display: block; margin-top: 4px; font-weight: 500; color: var(--ink-soft); font-size: 11.5px; }
+  @media print {
+    body { background: white; }
+    .toolbar { display: none !important; }
+    .deck { margin: 0; padding: 0; max-width: none; gap: 0; }
+    .slide {
+      box-shadow: none; border-radius: 0;
+      width: 100%; height: 100vh; page-break-after: always;
+      break-after: page; aspect-ratio: auto;
+    }
+    @page { size: landscape; margin: 0; }
+  }
+</style>
+</head>
+<body>
+  <div class="toolbar">
+    <div>sky<span style="color:var(--sun)">Wash</span> · Judge-ready deck · <strong>Print → Save as PDF</strong> (Landscape + Background graphics)</div>
+    <button type="button" onclick="window.print()">Download / Print PDF</button>
+  </div>
+
+  <div class="deck">
+
+    <!-- 1 COVER -->
+    <section class="slide dark">
+      <p class="eyebrow">GITEX Nigeria · Startup Pitch</p>
+      <h1 class="brand">sky<span>Wash</span></h1>
+      <p class="lead">The on-demand laundry network for Nigerian cities — book pickup in minutes, get clothes back clean, tracked, and paid for digitally.</p>
+      <div class="stat-row">
+        <div class="stat"><b>Live pilot</b><span>Web product deployed</span></div>
+        <div class="stat"><b>20+</b><span>Users in testing</span></div>
+        <div class="stat"><b>Asset-light</b><span>Partners, not wash plants</span></div>
+        <div class="stat"><b>AI assist</b><span>In-trip support layer</span></div>
+      </div>
+      <div class="footer"><span>Fresh laundry, on demand</span><span>1 / 12</span></div>
+    </section>
+
+    <!-- 2 PROBLEM -->
+    <section class="slide">
+      <p class="eyebrow">The problem</p>
+      <h2>In Nigerian cities, laundry is a weekly necessity stuck in an offline, high-friction system.</h2>
+      <p class="quote">People don’t hate laundry shops. They hate the time, traffic, uncertainty, and lack of trust around getting clothes cleaned.</p>
+      <div class="grid-3" style="margin-top:16px;">
+        <div class="card">
+          <h3>Time tax</h3>
+          <p>Drop-off, wait, pickup — often across bad traffic. Busy workers and students simply don’t have spare hours.</p>
+        </div>
+        <div class="card">
+          <h3>Trust gap</h3>
+          <p>Unclear pricing, no tracking, inconsistent quality. Informal helpers don’t scale; premium services cost too much.</p>
+        </div>
+        <div class="card">
+          <h3>Fragmented supply</h3>
+          <p>Neighborhood laundries have capacity but weak digital reach. Demand exists — distribution is broken.</p>
+        </div>
+      </div>
+      <div class="footer"><span>Why now: denser cities, mobile payments, and expectation of on-demand services</span><span>2 / 12</span></div>
+    </section>
+
+    <!-- 3 WHY NIGERIA / MARKET -->
+    <section class="slide">
+      <p class="eyebrow">Why Nigeria · Why now</p>
+      <h2>A massive urban convenience market with offline laundry at the center of weekly life.</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Market reality</h3>
+          <ul>
+            <li>Rapid urbanization + long commute culture</li>
+            <li>Mobile-first consumers already used to on-demand apps</li>
+            <li>Paystack/card &amp; transfer rails make digital collection workable</li>
+            <li>Thousands of local washers need demand aggregation</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Our wedge</h3>
+          <ul>
+            <li>Start with one dense community (estate / campus / office)</li>
+            <li>Own reliability + repeat weekly routes</li>
+            <li>Expand neighborhood-by-neighborhood</li>
+            <li>Then unlock B2B (short-lets, salons, small hotels)</li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer"><span>We win on density and trust — not national ads on day one</span><span>3 / 12</span></div>
+    </section>
+
+    <!-- 4 SOLUTION -->
+    <section class="slide dark">
+      <p class="eyebrow">Solution</p>
+      <h2>skyWash is Uber-for-laundry — without building laundromats.</h2>
+      <p class="lead">Customers book pickup. We match a nearby partner. Payment is digital. Status is live. Delivery comes back to their door.</p>
+      <div class="flow">
+        <div class="step">1. Book<small>Service + location</small></div>
+        <div class="step">2. Match<small>Nearby partner</small></div>
+        <div class="step">3. Pay<small>Card / transfer / cash</small></div>
+        <div class="step">4. Track<small>Live trip + assist</small></div>
+        <div class="step">5. Deliver<small>Clean clothes back</small></div>
+      </div>
+      <div class="footer"><span>Asset-light marketplace connecting demand ↔ local supply</span><span>4 / 12</span></div>
+    </section>
+
+    <!-- 5 PRODUCT PROOF -->
+    <section class="slide">
+      <p class="eyebrow">Product proof</p>
+      <h2>Not a mockup — a live pilot stack.</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>What works today</h3>
+          <ul>
+            <li>Customer onboarding (OTP / Google)</li>
+            <li>Map + nearby partner discovery</li>
+            <li>Multi-service booking + quotes/promos</li>
+            <li>Paystack checkout + order restore</li>
+            <li>Live trip progression + assist chat</li>
+            <li>Multi-language + light/dark experience</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Infrastructure</h3>
+          <ul>
+            <li><strong>Frontend:</strong> Vercel (web)</li>
+            <li><strong>API + DB:</strong> Railway + Postgres</li>
+            <li><strong>Payments:</strong> Paystack</li>
+            <li><strong>AI assist:</strong> Meta Llama-powered support layer</li>
+          </ul>
+          <p style="margin-top:10px;"><strong>Live:</strong> sudsnear-deploy.vercel.app</p>
+        </div>
+      </div>
+      <div class="footer"><span>Judges can open the product — execution risk is already lower</span><span>5 / 12</span></div>
+    </section>
+
+    <!-- 6 WHO / VALUE -->
+    <section class="slide">
+      <p class="eyebrow">Who we serve</p>
+      <h2>Clear value on both sides of the marketplace.</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Customers</h3>
+          <ul>
+            <li>Save hours every week</li>
+            <li>Transparent booking &amp; payment</li>
+            <li>Tracked delivery + in-app help</li>
+            <li>Local pricing, premium convenience</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Partners &amp; riders</h3>
+          <ul>
+            <li>Laundries get digital demand</li>
+            <li>Less idle capacity</li>
+            <li>Riders earn on pickup/delivery legs</li>
+            <li>No need to build their own app</li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer"><span>Primary beachhead: busy urban professionals + students</span><span>6 / 12</span></div>
+    </section>
+
+    <!-- 7 COMPETITION -->
+    <section class="slide">
+      <p class="eyebrow">Competition</p>
+      <h2>We don’t compete with every laundry. We replace the friction around laundry.</h2>
+      <table class="compare">
+        <thead>
+          <tr>
+            <th>Option</th>
+            <th>Convenience</th>
+            <th>Tracking</th>
+            <th>Digital pay</th>
+            <th>Local price</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Walk-in wash house</td>
+            <td>Low</td>
+            <td>None</td>
+            <td>Rare</td>
+            <td>Yes</td>
+          </tr>
+          <tr>
+            <td>Informal helper</td>
+            <td>Medium</td>
+            <td>None</td>
+            <td>Cash</td>
+            <td>Yes</td>
+          </tr>
+          <tr>
+            <td>Hotel / premium laundry</td>
+            <td>High</td>
+            <td>Limited</td>
+            <td>Yes</td>
+            <td>No</td>
+          </tr>
+          <tr>
+            <td><strong>skyWash</strong></td>
+            <td><strong>High</strong></td>
+            <td><strong>Live</strong></td>
+            <td><strong>Yes</strong></td>
+            <td><strong>Yes</strong></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="footer"><span>Moat = density + partner reliability + product loop (book → pay → track → repeat)</span><span>7 / 12</span></div>
+    </section>
+
+    <!-- 8 BUSINESS MODEL -->
+    <section class="slide dark">
+      <p class="eyebrow">Business model</p>
+      <h2>Simple unit economics: fee per completed order + network density.</h2>
+      <div class="grid-3">
+        <div class="card">
+          <h3>Take rate</h3>
+          <p>Platform/service fee on each order + partner margin share as volume grows.</p>
+        </div>
+        <div class="card">
+          <h3>Repeat engine</h3>
+          <p>Laundry is weekly. Win one estate → recurring routes beat one-off promotions.</p>
+        </div>
+        <div class="card">
+          <h3>Expansion</h3>
+          <p>Second neighborhoods, then B2B (Airbnb hosts, salons, small hotels).</p>
+        </div>
+      </div>
+      <p class="lead" style="margin-top:16px;">Path to early revenue: 20–30 quality orders/week in one dense zone can fund local ops — then scale zones.</p>
+      <div class="footer"><span>Low CapEx model: software + logistics coordination</span><span>8 / 12</span></div>
+    </section>
+
+    <!-- 9 TRACTION -->
+    <section class="slide">
+      <p class="eyebrow">Traction</p>
+      <h2>Early, real, and honest — we’re in pilot, not pretending scale.</h2>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Today</h3>
+          <ul>
+            <li><strong>20+ users</strong> onboarded in testing</li>
+            <li>End-to-end product live (web)</li>
+            <li>Payments, tracking, assist operational</li>
+            <li>Bootstrapped — <strong>$0 funding raised</strong></li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>What we’re proving next</h3>
+          <ul>
+            <li>Repeat order rate in one community</li>
+            <li>Partner SLA (quality + turnaround)</li>
+            <li>Contribution margin per order</li>
+            <li>Referral loops (estate / campus WhatsApp)</li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer"><span>Best signal for judges: working product + clear next metrics</span><span>9 / 12</span></div>
+    </section>
+
+    <!-- 10 AI -->
+    <section class="slide dark">
+      <p class="eyebrow">AI · Meta</p>
+      <h2>AI that reduces support cost and anxiety during the trip.</h2>
+      <p class="lead">skyWash Assist (Meta Llama) answers customer questions and pushes status updates as laundry moves from pickup to delivery.</p>
+      <div class="grid-2">
+        <div class="card">
+          <h3>Why it matters</h3>
+          <ul>
+            <li>“Where is my bag?” becomes self-serve</li>
+            <li>Fewer calls/WhatsApp threads per order</li>
+            <li>Feels premium without premium headcount</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Practical, not hype</h3>
+          <ul>
+            <li>Tied to live order state</li>
+            <li>Fallback replies when needed</li>
+            <li>Built for Nigerian service realities</li>
+          </ul>
+        </div>
+      </div>
+      <div class="footer"><span>AI as operations leverage — not a gimmick slide</span><span>10 / 12</span></div>
+    </section>
+
+    <!-- 11 GTM + 12-MONTH -->
+    <section class="slide">
+      <p class="eyebrow">Go-to-market · 12 months</p>
+      <h2>Dominate one zone. Then copy-paste the playbook.</h2>
+      <div class="grid-3">
+        <div class="card">
+          <h3>Months 1–3</h3>
+          <p>Lock 3–5 laundry partners. Acquire first 50 households in one estate/office. Nail pickup reliability.</p>
+        </div>
+        <div class="card">
+          <h3>Months 4–6</h3>
+          <p>Push weekly regulars. Add commission rider. Hit consistent order density and referral growth.</p>
+        </div>
+        <div class="card">
+          <h3>Months 7–12</h3>
+          <p>Open second neighborhood. Pilot light B2B. Standardize partner SLAs and unit economics.</p>
+        </div>
+      </div>
+      <div class="footer"><span>Growth thesis: density → cheaper logistics → better margins → expansion</span><span>11 / 12</span></div>
+    </section>
+
+    <!-- 12 ASK / WHY GITEX -->
+    <section class="slide dark">
+      <p class="eyebrow">The ask · Why GITEX</p>
+      <h2>Select skyWash to pitch because we combine a real Nigerian problem, a live product, and a scalable local model.</h2>
+      <div class="ask-box">
+        <p><strong>What we want from GITEX:</strong> visibility, partner introductions (laundries, logistics, payments), mentorship, and investor conversations to accelerate pilot → city expansion.</p>
+      </div>
+      <div class="stat-row three" style="margin-top:16px;">
+        <div class="stat"><b>Execution</b><span>Live pilot already shipping</span></div>
+        <div class="stat"><b>Relevance</b><span>Urban convenience + SMEs + AI</span></div>
+        <div class="stat"><b>Upside</b><span>Repeat weekly demand nationwide</span></div>
+      </div>
+      <div class="footer"><span class="brand">sky<span>Wash</span> — Built in Nigeria, ready for the stage</span><span>12 / 12</span></div>
+    </section>
+
+  </div>
+</body>
+</html>

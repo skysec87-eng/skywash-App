@@ -370,17 +370,48 @@ function ensureGoogleInitialized(){
   googleReady = true;
 }
 
-async function initGoogleSignIn(){
+async function fetchGoogleConfig(timeoutMs = 2500){
+  if(!API_BASE && !location.origin) return null;
+  const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timer = ctrl ? setTimeout(() => ctrl.abort(), timeoutMs) : null;
   try{
-    const cfg = await api('/api/auth/google/config');
+    const headers = { 'Content-Type': 'application/json' };
+    const res = await fetch(API_BASE + '/api/auth/google/config', {
+      headers,
+      signal: ctrl ? ctrl.signal : undefined
+    });
+    if(!res.ok) return null;
+    return await res.json();
+  }catch(_){
+    return null;
+  }finally{
+    if(timer) clearTimeout(timer);
+  }
+}
+
+function renderGoogleButton(){
+  const host = document.getElementById('obGoogleBtn');
+  if(!host || !googleClientId) return;
+  if(host.dataset.rendered === '1') return;
+  ensureGoogleInitialized();
+  host.innerHTML = '';
+  google.accounts.id.renderButton(host, {
+    theme: 'outline',
+    size: 'large',
+    shape: 'pill',
+    text: 'continue_with',
+    width: Math.min(320, Math.max(260, host.parentElement?.clientWidth || 280))
+  });
+  host.dataset.rendered = '1';
+}
+
+async function initGoogleSignIn(){
+  // Render with the public client id immediately — do not wait on a cold/down API.
+  const cfgPromise = fetchGoogleConfig();
+  if(!googleClientId){
+    const cfg = await cfgPromise;
     if(cfg && cfg.client_id) googleClientId = cfg.client_id;
-    // Only hide if backend is explicitly disabled AND we have no public client id fallback
-    if(cfg && cfg.enabled === false && !googleClientId){
-      const wrap = document.getElementById('obGoogleWrap');
-      if(wrap) wrap.hidden = true;
-      return;
-    }
-  }catch(_){}
+  }
   if(!googleClientId){
     const wrap = document.getElementById('obGoogleWrap');
     if(wrap) wrap.hidden = true;
@@ -388,25 +419,31 @@ async function initGoogleSignIn(){
   }
   try{
     await waitForGoogle();
-    ensureGoogleInitialized();
-    const host = document.getElementById('obGoogleBtn');
-    if(!host || host.dataset.rendered === '1') return;
-    host.innerHTML = '';
-    google.accounts.id.renderButton(host, {
-      theme: 'outline',
-      size: 'large',
-      shape: 'pill',
-      text: 'continue_with',
-      width: Math.min(320, Math.max(260, host.parentElement?.clientWidth || 280))
-    });
-    host.dataset.rendered = '1';
+    renderGoogleButton();
   }catch(ex){
     const err = document.getElementById('obGoogleError');
     if(err){
       err.textContent = ex.message || 'Google sign-in unavailable';
       err.classList.remove('hidden');
     }
+    return;
   }
+  // Optional: refresh client_id from backend if it differs (rare)
+  try{
+    const cfg = await cfgPromise;
+    if(cfg && cfg.enabled === false && !cfg.client_id){
+      const wrap = document.getElementById('obGoogleWrap');
+      if(wrap) wrap.hidden = true;
+      return;
+    }
+    if(cfg && cfg.client_id && cfg.client_id !== googleClientId){
+      googleClientId = cfg.client_id;
+      googleReady = false;
+      const host = document.getElementById('obGoogleBtn');
+      if(host) host.dataset.rendered = '0';
+      renderGoogleButton();
+    }
+  }catch(_){}
 }
 
 async function handleGoogleCredential(response){
@@ -1821,7 +1858,7 @@ async function boot(){
     await api('/api/health');
   }catch(e){
     const apiHint = API_BASE || '(same origin)';
-    alert(`API not reachable at ${apiHint}. For local: run the backend and python3 serve.py. For Vercel: use https://sudsnear-deploy.vercel.app and ensure Railway CORS includes that origin.`);
+    alert(`API not reachable at ${apiHint}. For local: run the backend and python3 serve.py. For Vercel: use https://sudsnear-deploy.vercel.app and ensure Fly.io CORS includes that origin.`);
     return;
   }
 
