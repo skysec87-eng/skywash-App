@@ -136,7 +136,8 @@ public class AuthPaymentController {
     String orderId = str(body.get("order_id"));
     String email = str(body.get("email"));
     int amount = body.get("amount") instanceof Number n ? n.intValue() : 0;
-    return paystackService.initialize(orderId, amount, email);
+    boolean android = "android".equalsIgnoreCase(str(body.get("client")));
+    return paystackService.initialize(orderId, amount, email, android);
   }
 
   @PostMapping("/payments/verifications")
@@ -147,17 +148,24 @@ public class AuthPaymentController {
   /**
    * HTTPS landing page for Paystack (dashboard requires https).
    * Redirects into the local frontend with the payment reference.
+   * Android clients get skywash:// so Custom Tabs returns to the native trip screen.
    */
   @GetMapping("/payments/callback")
   public ResponseEntity<Void> paymentCallback(
       @RequestParam(value = "reference", required = false) String reference,
-      @RequestParam(value = "trxref", required = false) String trxref
+      @RequestParam(value = "trxref", required = false) String trxref,
+      @RequestParam(value = "client", required = false) String client
   ) {
     String ref = (reference != null && !reference.isBlank()) ? reference : trxref;
-    String target = frontendCallbackBase;
+    String target = "android".equalsIgnoreCase(client == null ? "" : client.trim())
+        ? "skywash://payment/callback"
+        : frontendCallbackBase;
     if (ref != null && !ref.isBlank()) {
       String sep = target.contains("?") ? "&" : "?";
       target = target + sep + "reference=" + URLEncoder.encode(ref, StandardCharsets.UTF_8);
+      if (!target.contains("payment=")) {
+        target = target + "&payment=callback";
+      }
     }
     HttpHeaders headers = new HttpHeaders();
     headers.setLocation(URI.create(target));

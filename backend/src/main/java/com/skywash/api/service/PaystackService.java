@@ -39,6 +39,10 @@ public class PaystackService {
   }
 
   public Map<String, Object> initialize(String orderId, int amountNaira, String email) {
+    return initialize(orderId, amountNaira, email, false);
+  }
+
+  public Map<String, Object> initialize(String orderId, int amountNaira, String email, boolean androidClient) {
     if (orderId == null || orderId.isBlank()) {
       throw new ApiException(HttpStatus.BAD_REQUEST, "order_id is required");
     }
@@ -75,8 +79,12 @@ public class PaystackService {
       payload.put("amount", amountNaira * 100); // Paystack expects kobo
       payload.put("currency", "NGN");
       payload.put("reference", reference);
-      payload.put("callback_url", props.getCallbackUrl());
-      payload.put("metadata", Map.of("order_id", orderId));
+      String callback = props.getCallbackUrl();
+      if (androidClient) {
+        callback = appendQuery(callback, "client", "android");
+      }
+      payload.put("callback_url", callback);
+      payload.put("metadata", Map.of("order_id", orderId, "client", androidClient ? "android" : "web"));
 
       JsonNode root = postJson("/transaction/initialize", payload);
       if (!root.path("status").asBoolean(false)) {
@@ -104,6 +112,12 @@ public class PaystackService {
     } catch (Exception ex) {
       throw new ApiException(HttpStatus.BAD_GATEWAY, "Paystack error: " + ex.getMessage());
     }
+  }
+
+  private static String appendQuery(String url, String key, String value) {
+    if (url == null || url.isBlank()) return url;
+    String sep = url.contains("?") ? "&" : "?";
+    return url + sep + key + "=" + value;
   }
 
   public Map<String, Object> verify(String reference) {
