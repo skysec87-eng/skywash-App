@@ -192,7 +192,12 @@ public class OrderService {
     orderRepository.save(o);
   }
 
-  @Transactional
+  /**
+   * Mark order paid. Idempotent — safe under concurrent webhook + client verify.
+   * Does not append a timeline row (lifecycle timeline uses @OrderColumn idxs;
+   * concurrent inserts race on order_timeline_pkey). Payment is tracked on columns.
+   */
+  @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
   public Map<String, Object> markPaid(String orderId, String reference, String channel) {
     OrderEntity o = orderRepository.findById(orderId)
         .orElseThrow(() -> new ApiException(HttpStatus.NOT_FOUND, "Order not found: " + orderId));
@@ -205,31 +210,17 @@ public class OrderService {
       );
     }
     o.setPaymentStatus("paid");
-    o.setPaymentReference(reference);
+    if (reference != null && !reference.isBlank()) {
+      o.setPaymentReference(reference);
+    }
     o.setPaymentChannel(channel);
     o.setPaidAt(Instant.now());
     o.setUpdatedAt(Instant.now());
-    boolean alreadyLogged = o.getTimeline().stream()
-        .anyMatch(t -> t.getKey() != null && "paid".equalsIgnoreCase(t.getKey()));
-    if (!alreadyLogged) {
-      o.getTimeline().add(new OrderEntity.TimelineEmbed("paid", "Payment received", Instant.now()));
-    }
-    try {
-      orderRepository.saveAndFlush(o);
-    } catch (org.springframework.dao.DataIntegrityViolationException ex) {
-      // Concurrent webhook + verify both tried to append timeline — payment is still good.
-      OrderEntity again = getEntity(orderId);
-      return Map.of(
-          "id", again.getId(),
-          "payment_status", again.getPaymentStatus() == null ? "paid" : again.getPaymentStatus(),
-          "payment_reference", again.getPaymentReference() == null ? reference : again.getPaymentReference(),
-          "already_paid", true
-      );
-    }
+    orderRepository.save(o);
     return Map.of(
         "id", o.getId(),
         "payment_status", "paid",
-        "payment_reference", reference,
+        "payment_reference", o.getPaymentReference() == null ? reference : o.getPaymentReference(),
         "already_paid", false
     );
   }

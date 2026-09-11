@@ -155,6 +155,7 @@ public class PaystackService {
       out.put("channel", channel);
       if (orderId != null && !orderId.isBlank()) out.put("order_id", orderId);
 
+      // Always return Paystack's status to the client. Order DB updates must not 502 the verify.
       if ("success".equalsIgnoreCase(status)) {
         try {
           Map<String, Object> paid = orderService.markPaidByReference(
@@ -163,9 +164,8 @@ public class PaystackService {
           if (paid.get("id") != null) {
             out.put("order_id", String.valueOf(paid.get("id")));
           }
-        } catch (Exception ex) {
-          // Paystack already succeeded — never fail the client on a timeline race.
-          out.put("order_update_error", ex.getMessage());
+        } catch (Throwable ex) {
+          out.put("order_update_error", ex.getMessage() == null ? ex.getClass().getSimpleName() : ex.getMessage());
           if (orderId != null && !orderId.isBlank()) {
             out.put("order_id", orderId);
           }
